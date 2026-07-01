@@ -1,0 +1,15 @@
+.env
+
+coverage.out
+
+bin/
+
+tmp/
+
+vendor/
+
+.idea/
+
+.vscode/
+
+*.log

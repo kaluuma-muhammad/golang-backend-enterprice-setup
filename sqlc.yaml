@@ -1,0 +1,43 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries:
+      - internal/infrastructure/postgres/queries/
+    schema:
+      - internal/infrastructure/postgres/migrations/
+    gen:
+      go:
+        package: "db"
+        out: "internal/infrastructure/postgres/generated"
+        sql_package: "pgx/v5"
+        overrides:
+          - db_type: "uuid"
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+          - db_type: "pg_catalog.timestamp"
+            nullable: false
+            go_type:
+              import: "time"
+              type: "Time"
+          - db_type: "pg_catalog.timestamp"
+            nullable: true
+            go_type:
+              import: "time"
+              type: "Time"
+          - db_type: "pg_catalog.timestamptz"
+            nullable: false
+            go_type:
+              import: "time"
+              type: "Time"
+          - db_type: "pg_catalog.timestamptz"
+            nullable: true
+            go_type:
+              import: "time"
+              type: "Time"
+          - db_type: "pg_catalog.bool"
+            nullable: false
+            go_type: "bool"
+          - db_type: "pg_catalog.bool"
+            nullable: true
+            go_type: "bool"

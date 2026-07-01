@@ -1,0 +1,59 @@
+version: "3"
+
+dotenv:
+  - .env
+
+vars:
+  DB_URL: postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@{{.DB_HOST}}:{{.DB_PORT}}/{{.DB_NAME}}?sslmode={{.DB_SSLMODE}}
+  MIGRATION_DIR: internal/infrastructure/postgres/migrations
+
+tasks:
+
+  run:
+    cmds:
+      - go run ./cmd/api
+
+  build:
+    cmds:
+      - go build ./...
+
+  test:
+    cmds:
+      - go test ./...
+
+  tidy:
+    cmds:
+      - go mod tidy
+
+  sqlc:
+    cmds:
+      - sqlc generate
+
+  migrate:create:
+    desc: Create migration
+    cmds:
+      - goose -dir {{.MIGRATION_DIR}} create {{.CLI_ARGS}} sql
+
+  migrate:up:
+    cmds:
+      - goose -dir {{.MIGRATION_DIR}} postgres "{{.DB_URL}}" up
+
+  migrate:down:
+    cmds:
+      - goose -dir {{.MIGRATION_DIR}} postgres "{{.DB_URL}}" down
+
+  migrate:status:
+    cmds:
+      - goose -dir {{.MIGRATION_DIR}} postgres "{{.DB_URL}}" status
+
+  migrate:reset:
+    cmds:
+      - goose -dir {{.MIGRATION_DIR}} postgres "{{.DB_URL}}" reset
+
+  fmt:
+    cmds:
+      - gofmt -w .
+
+  vet:
+    cmds:
+      - go vet ./...
