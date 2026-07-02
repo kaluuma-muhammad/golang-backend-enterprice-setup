@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	applicationToken "github.com/go-api/internal/application/token"
 	backendSession "github.com/go-api/internal/domain/session"
 	backendUser "github.com/go-api/internal/domain/user"
 	"github.com/google/uuid"
@@ -12,13 +13,11 @@ import (
 	"github.com/go-api/internal/infrastructure/jwt"
 )
 
-const RefreshTTL = 7 * 24 * time.Hour
-
 type Service struct {
 	users        backendUser.Repository
 	sessions     backendSession.Repository
 	password     *PasswordService
-	tokenService *TokenService
+	tokenService *applicationToken.Service
 	jwtManager   *jwt.Manager
 }
 
@@ -26,7 +25,7 @@ func NewService(
 	users backendUser.Repository,
 	sessions backendSession.Repository,
 	password *PasswordService,
-	tokenService *TokenService,
+	tokenService *applicationToken.Service,
 	jwtManager *jwt.Manager,
 ) *Service {
 
@@ -70,21 +69,19 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest, userAgent, 
 		return nil, err
 	}
 
-	refreshToken, err := s.tokenService.Generate()
+	refreshToken, err := s.tokenService.CreateRefreshToken()
 
 	if err != nil {
 		return nil, err
 	}
 
-	refreshHash := s.tokenService.Hash(refreshToken)
-
 	session := &backendSession.Session{
 		ID:           uuid.New(),
 		UserID:       user.ID,
-		RefreshToken: refreshHash,
+		RefreshToken: refreshToken.TokenHash,
 		UserAgent:    userAgent,
 		IPAddress:    net.ParseIP(ipAddress),
-		ExpiresAt:    time.Now().Add(7 * 24 * time.Hour),
+		ExpiresAt:    refreshToken.ExpiresAt,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
@@ -104,7 +101,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest, userAgent, 
 	return &LoginResponse{
 		User:         NewUserResponse(user),
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		RefreshToken: refreshToken.Token,
 		ExpiresIn:    900,
 	}, nil
 }
@@ -121,21 +118,19 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, userAgent, ipAddr
 		return nil, ErrInvalidCredentials
 	}
 
-	refreshToken, err := s.tokenService.Generate()
+	refreshToken, err := s.tokenService.CreateRefreshToken()
 
 	if err != nil {
 		return nil, err
 	}
 
-	refreshHash := s.tokenService.Hash(refreshToken)
-
 	session := &backendSession.Session{
 		ID:           uuid.New(),
 		UserID:       user.ID,
-		RefreshToken: refreshHash,
+		RefreshToken: refreshToken.TokenHash,
 		UserAgent:    userAgent,
 		IPAddress:    net.ParseIP(ipAddress),
-		ExpiresAt:    time.Now().Add(7 * 24 * time.Hour),
+		ExpiresAt:    refreshToken.ExpiresAt,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
@@ -155,7 +150,7 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, userAgent, ipAddr
 	return &LoginResponse{
 		User:         NewUserResponse(user),
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		RefreshToken: refreshToken.Token,
 		ExpiresIn:    900,
 	}, nil
 }
@@ -197,18 +192,16 @@ func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (*LoginRespon
 		return nil, err
 	}
 
-	refreshToken, err := s.tokenService.Generate()
+	refreshToken, err := s.tokenService.CreateRefreshToken()
 	if err != nil {
 		return nil, err
 	}
 
-	refreshHash := s.tokenService.Hash(refreshToken)
-
 	err = s.sessions.UpdateRefreshToken(
 		ctx,
 		session.ID,
-		refreshHash,
-		time.Now().Add(RefreshTTL),
+		refreshToken.TokenHash,
+		refreshToken.ExpiresAt,
 	)
 	if err != nil {
 		return nil, err
@@ -217,7 +210,7 @@ func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (*LoginRespon
 	return &LoginResponse{
 		User:         NewUserResponse(user),
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		RefreshToken: refreshToken.Token,
 		ExpiresIn:    int(jwt.AccessTokenTTL.Seconds()),
 	}, nil
 }
