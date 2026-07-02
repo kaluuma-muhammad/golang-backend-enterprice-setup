@@ -1,20 +1,20 @@
-package auth
+package token
 
 import (
 	"crypto/rand"
-	"encoding/base64"
-
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 )
 
-type TokenService struct{}
+type Generator struct{}
 
-func NewTokenService() *TokenService {
-	return &TokenService{}
+func NewGenerator() *Generator {
+	return &Generator{}
 }
 
-func (s *TokenService) Generate() (string, error) {
+func (g *Generator) Generate() (string, error) {
+
 	b := make([]byte, 32)
 
 	_, err := rand.Read(b)
@@ -25,7 +25,7 @@ func (s *TokenService) Generate() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-func (s *TokenService) Hash(token string) string {
+func (g *Generator) Hash(token string) string {
 
 	hash := sha256.Sum256([]byte(token))
 
