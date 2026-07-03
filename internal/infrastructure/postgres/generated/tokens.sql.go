@@ -71,6 +71,21 @@ func (q *Queries) DeleteToken(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const deleteTokenByUserAndType = `-- name: DeleteTokenByUserAndType :exec
+
+DELETE FROM tokens WHERE user_id = $1 AND type = $2
+`
+
+type DeleteTokenByUserAndTypeParams struct {
+	UserID uuid.UUID
+	Type   TokenType
+}
+
+func (q *Queries) DeleteTokenByUserAndType(ctx context.Context, arg DeleteTokenByUserAndTypeParams) error {
+	_, err := q.db.Exec(ctx, deleteTokenByUserAndType, arg.UserID, arg.Type)
+	return err
+}
+
 const findByToken = `-- name: FindByToken :one
 
 SELECT id, user_id, type, token, expires_at, used_at, created_at, updated_at FROM tokens WHERE token = $1
@@ -92,6 +107,32 @@ func (q *Queries) FindByToken(ctx context.Context, token string) (Token, error) 
 	return i, err
 }
 
+const findByTokenAndType = `-- name: FindByTokenAndType :one
+
+SELECT id, user_id, type, token, expires_at, used_at, created_at, updated_at FROM tokens WHERE token = $1 AND type = $2
+`
+
+type FindByTokenAndTypeParams struct {
+	Token string
+	Type  TokenType
+}
+
+func (q *Queries) FindByTokenAndType(ctx context.Context, arg FindByTokenAndTypeParams) (Token, error) {
+	row := q.db.QueryRow(ctx, findByTokenAndType, arg.Token, arg.Type)
+	var i Token
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Type,
+		&i.Token,
+		&i.ExpiresAt,
+		&i.UsedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const findByTokenByID = `-- name: FindByTokenByID :one
 
 SELECT id, user_id, type, token, expires_at, used_at, created_at, updated_at FROM tokens WHERE id = $1
@@ -99,6 +140,32 @@ SELECT id, user_id, type, token, expires_at, used_at, created_at, updated_at FRO
 
 func (q *Queries) FindByTokenByID(ctx context.Context, id uuid.UUID) (Token, error) {
 	row := q.db.QueryRow(ctx, findByTokenByID, id)
+	var i Token
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Type,
+		&i.Token,
+		&i.ExpiresAt,
+		&i.UsedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getTokenByUserAndType = `-- name: GetTokenByUserAndType :one
+
+SELECT id, user_id, type, token, expires_at, used_at, created_at, updated_at FROM tokens WHERE user_id = $1 AND type = $2 AND used_at IS NULL LIMIT 1
+`
+
+type GetTokenByUserAndTypeParams struct {
+	UserID uuid.UUID
+	Type   TokenType
+}
+
+func (q *Queries) GetTokenByUserAndType(ctx context.Context, arg GetTokenByUserAndTypeParams) (Token, error) {
+	row := q.db.QueryRow(ctx, getTokenByUserAndType, arg.UserID, arg.Type)
 	var i Token
 	err := row.Scan(
 		&i.ID,

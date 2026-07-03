@@ -1,9 +1,10 @@
 package config
 
 type Config struct {
-	App AppConfig
-	DB  DBConfig
-	JWT JWTConfig
+	App   AppConfig
+	DB    DBConfig
+	JWT   JWTConfig
+	Email EmailConfig
 }
 
 type AppConfig struct {
@@ -22,4 +23,12 @@ type DBConfig struct {
 
 type JWTConfig struct {
 	Secret string
+}
+
+type EmailConfig struct {
+	Host     string
+	Port     string
+	Username string
+	Password string
+	From     string
 }

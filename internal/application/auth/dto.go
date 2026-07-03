@@ -16,6 +16,14 @@ type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token" validate:"required"`
 }
 
+type ResendVerificationRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type VerifyEmailRequest struct {
+	Code string `json:"code" validate:"required,len=6,numeric"`
+}
+
 type LoginResponse struct {
 	User         UserResponse `json:"user"`
 	AccessToken  string       `json:"access_token"`

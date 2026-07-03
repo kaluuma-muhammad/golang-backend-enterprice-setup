@@ -35,4 +35,15 @@ type ServiceContract interface {
 		ctx context.Context,
 		userID uuid.UUID,
 	) error
+
+	VerifyEmail(
+		ctx context.Context,
+		userID uuid.UUID,
+		req VerifyEmailRequest,
+	) error
+
+	ResendVerification(
+		ctx context.Context,
+		req ResendVerificationRequest,
+	) error
 }

@@ -23,5 +23,12 @@ var (
 	ErrInvalidAuthorizationHeader = errors.New("invalid authorization header")
 
 	// Account
-	ErrEmailNotVerified = errors.New("email not verified")
+	ErrEmailNotVerified    = errors.New("email not verified")
+	ErrUserAlreadyVerified = errors.New("email already verified")
+	ErrUserNotFound        = errors.New("user not found")
+
+	// email verification
+	ErrEmailAlreadyVerified    = errors.New("email already verified")
+	ErrInvalidVerificationCode = errors.New("invalid verification code")
+	ErrVerificationCodeExpired = errors.New("verification code has expired")
 )

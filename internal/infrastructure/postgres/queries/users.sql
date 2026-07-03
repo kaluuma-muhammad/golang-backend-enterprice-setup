@@ -31,5 +31,13 @@ SET email = $2,
     updated_at = $6
 WHERE id = $1;
 
+-- name: VerifyUser :exec
+
+UPDATE users
+SET
+    is_verified = TRUE,
+    updated_at = NOW()
+WHERE id = $1;
+
 -- name: DeleteUser :exec
 DELETE FROM users WHERE id = $1;

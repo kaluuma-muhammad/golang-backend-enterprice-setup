@@ -100,3 +100,38 @@ func (s *Service) Hash(token string) string {
 
 	return s.generator.Hash(token)
 }
+
+func (s *Service) CreateVerificationToken(ctx context.Context, userID uuid.UUID) (string, error) {
+	code, err := s.generator.GenerateCode(6)
+	if err != nil {
+		return "", err
+	}
+
+	hash := s.generator.Hash(code)
+
+	_ = s.repository.DeleteByUserAndType(ctx, userID, domainToken.EmailVerification)
+
+	err = s.repository.Create(ctx, &domainToken.Token{
+		ID:        uuid.New(),
+		UserID:    userID,
+		Type:      domainToken.EmailVerification,
+		Token:     hash,
+		ExpiresAt: time.Now().Add(15 * time.Minute),
+		CreatedAt: time.Now(),
+	},
+	)
+
+	if err != nil {
+		return "", err
+	}
+
+	return code, nil
+}
+
+func (s *Service) DeleteByUserAndType(ctx context.Context, userID uuid.UUID, tokenType domainToken.Type) error {
+	return s.repository.DeleteByUserAndType(ctx, userID, tokenType)
+}
+
+func (s *Service) FindByTokenAndType(ctx context.Context, token string, tokenType domainToken.Type) (*domainToken.Token, error) {
+	return s.repository.FindByTokenAndType(ctx, token, tokenType)
+}
