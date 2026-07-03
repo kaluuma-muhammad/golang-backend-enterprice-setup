@@ -27,6 +27,11 @@ type Repository interface {
 		user *User,
 	) error
 
+	Verify(
+		ctx context.Context,
+		id uuid.UUID,
+	) error
+
 	Delete(
 		ctx context.Context,
 		id uuid.UUID,

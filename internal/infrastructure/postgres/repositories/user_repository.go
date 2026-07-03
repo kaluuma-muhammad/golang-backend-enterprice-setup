@@ -88,6 +88,11 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 	)
 }
 
+func (r *UserRepository) Verify(ctx context.Context, id uuid.UUID) error {
+
+	return r.q.VerifyUser(ctx, id)
+}
+
 func (r *UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
 
 	return r.q.DeleteUser(ctx, id)

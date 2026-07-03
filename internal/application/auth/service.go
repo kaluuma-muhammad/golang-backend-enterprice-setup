@@ -2,14 +2,17 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
 	applicationToken "github.com/go-api/internal/application/token"
 	backendSession "github.com/go-api/internal/domain/session"
+	domainToken "github.com/go-api/internal/domain/token"
 	backendUser "github.com/go-api/internal/domain/user"
 	"github.com/google/uuid"
 
+	"github.com/go-api/internal/infrastructure/email"
 	"github.com/go-api/internal/infrastructure/jwt"
 )
 
@@ -18,6 +21,7 @@ type Service struct {
 	sessions     backendSession.Repository
 	password     *PasswordService
 	tokenService *applicationToken.Service
+	emailService *email.Service
 	jwtManager   *jwt.Manager
 }
 
@@ -26,6 +30,7 @@ func NewService(
 	sessions backendSession.Repository,
 	password *PasswordService,
 	tokenService *applicationToken.Service,
+	emailService *email.Service,
 	jwtManager *jwt.Manager,
 ) *Service {
 
@@ -34,6 +39,7 @@ func NewService(
 		sessions:     sessions,
 		password:     password,
 		tokenService: tokenService,
+		emailService: emailService,
 		jwtManager:   jwtManager,
 	}
 }
@@ -87,22 +93,38 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest, userAgent, 
 	}
 
 	err = s.sessions.Create(ctx, session)
-
 	if err != nil {
 		return nil, err
 	}
 
 	accessToken, err := s.jwtManager.GenerateAccessToken(user.ID, session.ID)
-
 	if err != nil {
 		return nil, err
+	}
+
+	code, err := s.tokenService.CreateVerificationToken(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	subject, html, text := email.VerificationTemplate(user.FirstName, code)
+
+	err = s.emailService.Send(ctx, email.Message{
+		To:      user.Email,
+		Subject: subject,
+		HTML:    html,
+		Text:    text,
+	})
+
+	if err != nil {
+		fmt.Println("Email verification failed:", err)
 	}
 
 	return &LoginResponse{
 		User:         NewUserResponse(user),
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken.Token,
-		ExpiresIn:    900,
+		ExpiresIn:    int(jwt.AccessTokenTTL.Seconds()),
 	}, nil
 }
 
@@ -151,8 +173,88 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, userAgent, ipAddr
 		User:         NewUserResponse(user),
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken.Token,
-		ExpiresIn:    900,
+		ExpiresIn:    int(jwt.AccessTokenTTL.Seconds()),
 	}, nil
+}
+
+func (s *Service) VerifyEmail(ctx context.Context, userID uuid.UUID, req VerifyEmailRequest) error {
+
+	user, err := s.users.FindByID(ctx, userID)
+	if err != nil {
+		return ErrUnauthorized
+	}
+
+	if user.IsVerified {
+		return ErrEmailAlreadyVerified
+	}
+
+	hash := s.tokenService.Hash(req.Code)
+	token, err := s.tokenService.FindByTokenAndType(
+		ctx,
+		hash,
+		domainToken.EmailVerification,
+	)
+
+	if err != nil {
+		return ErrInvalidVerificationCode
+	}
+
+	if token.UserID != user.ID {
+		return ErrInvalidVerificationCode
+	}
+
+	if token.UsedAt != nil {
+		return ErrInvalidVerificationCode
+	}
+
+	if token.ExpiresAt.Before(time.Now()) {
+		_ = s.tokenService.DeleteByUserAndType(ctx, user.ID, domainToken.EmailVerification)
+
+		return ErrVerificationCodeExpired
+	}
+
+	err = s.users.Verify(ctx, user.ID)
+	if err != nil {
+		return err
+	}
+
+	err = s.tokenService.Consume(ctx, token.ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Service) ResendVerification(ctx context.Context, req ResendVerificationRequest) error {
+	user, err := s.users.FindByEmail(ctx, req.Email)
+	if err != nil {
+		return ErrUserNotFound
+	}
+
+	if user.IsVerified {
+		return ErrUserAlreadyVerified
+	}
+
+	code, err := s.tokenService.CreateVerificationToken(ctx, user.ID)
+	if err != nil {
+		return err
+	}
+
+	subject, html, text := email.VerificationTemplate(user.FirstName, code)
+
+	err = s.emailService.Send(ctx, email.Message{
+		To:      user.Email,
+		Subject: subject,
+		HTML:    html,
+		Text:    text,
+	})
+
+	if err != nil {
+		fmt.Println("Email verification failed:", err)
+	}
+
+	return nil
 }
 
 func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (*LoginResponse, error) {

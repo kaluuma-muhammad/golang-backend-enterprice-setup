@@ -17,9 +17,21 @@ type Repository interface {
 		token string,
 	) (*Token, error)
 
+	FindByTokenAndType(
+		ctx context.Context,
+		token string,
+		tokenType Type,
+	) (*Token, error)
+
 	MarkUsed(
 		ctx context.Context,
 		id uuid.UUID,
+	) error
+
+	DeleteByUserAndType(
+		ctx context.Context,
+		userID uuid.UUID,
+		tokenType Type,
 	) error
 
 	DeleteExpired(
