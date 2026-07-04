@@ -23,6 +23,12 @@ type Repository interface {
 		tokenType Type,
 	) (*Token, error)
 
+	FindByUserAndType(
+		ctx context.Context,
+		userID uuid.UUID,
+		tokenType Type,
+	) (*Token, error)
+
 	MarkUsed(
 		ctx context.Context,
 		id uuid.UUID,

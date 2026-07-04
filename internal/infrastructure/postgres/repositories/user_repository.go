@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-api/internal/domain/user"
 	db "github.com/go-api/internal/infrastructure/postgres/generated"
+	"github.com/go-api/internal/infrastructure/postgres/types"
 )
 
 type UserRepository struct {
@@ -29,8 +30,8 @@ func toDomain(u db.User) *user.User {
 		FirstName:  u.FirstName,
 		LastName:   u.LastName,
 		IsVerified: u.IsVerified,
-		CreatedAt:  u.CreatedAt,
-		UpdatedAt:  u.UpdatedAt,
+		CreatedAt:  types.FromPGTimestamp(u.CreatedAt),
+		UpdatedAt:  types.FromPGTimestamp(u.UpdatedAt),
 	}
 }
 
@@ -45,8 +46,8 @@ func (r *UserRepository) Create(ctx context.Context, u *user.User) error {
 			FirstName:  u.FirstName,
 			LastName:   u.LastName,
 			IsVerified: u.IsVerified,
-			CreatedAt:  u.CreatedAt,
-			UpdatedAt:  u.UpdatedAt,
+			CreatedAt:  types.ToPGTimestamp(u.CreatedAt),
+			UpdatedAt:  types.ToPGTimestamp(u.UpdatedAt),
 		},
 	)
 }
@@ -83,7 +84,7 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 			FirstName:  u.FirstName,
 			LastName:   u.LastName,
 			IsVerified: u.IsVerified,
-			UpdatedAt:  u.UpdatedAt,
+			UpdatedAt:  types.ToPGTimestamp(u.UpdatedAt),
 		},
 	)
 }

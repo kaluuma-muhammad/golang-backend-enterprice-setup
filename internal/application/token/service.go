@@ -135,3 +135,7 @@ func (s *Service) DeleteByUserAndType(ctx context.Context, userID uuid.UUID, tok
 func (s *Service) FindByTokenAndType(ctx context.Context, token string, tokenType domainToken.Type) (*domainToken.Token, error) {
 	return s.repository.FindByTokenAndType(ctx, token, tokenType)
 }
+
+func (s *Service) FindByUserAndType(ctx context.Context, userID uuid.UUID, tokenType domainToken.Type) (*domainToken.Token, error) {
+	return s.repository.FindByUserAndType(ctx, userID, tokenType)
+}

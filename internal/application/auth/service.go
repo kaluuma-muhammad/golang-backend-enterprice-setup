@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"time"
 
@@ -106,19 +107,20 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest, userAgent, 
 	if err != nil {
 		return nil, err
 	}
+	log.Println("Verification code sent successfully:", code)
 
-	subject, html, text := email.VerificationTemplate(user.FirstName, code)
+	// subject, html, text := email.VerificationTemplate(user.FirstName, code)
 
-	err = s.emailService.Send(ctx, email.Message{
-		To:      user.Email,
-		Subject: subject,
-		HTML:    html,
-		Text:    text,
-	})
+	// err = s.emailService.Send(ctx, email.Message{
+	// 	To:      user.Email,
+	// 	Subject: subject,
+	// 	HTML:    html,
+	// 	Text:    text,
+	// })
 
-	if err != nil {
-		fmt.Println("Email verification failed:", err)
-	}
+	// if err != nil {
+	// 	fmt.Println("Email verification failed:", err)
+	// }
 
 	return &LoginResponse{
 		User:         NewUserResponse(user),

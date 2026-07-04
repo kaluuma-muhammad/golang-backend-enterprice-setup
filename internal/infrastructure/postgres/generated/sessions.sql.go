@@ -8,7 +8,6 @@ package db
 import (
 	"context"
 	"net/netip"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -42,12 +41,12 @@ type CreateSessionParams struct {
 	UserAgent     pgtype.Text
 	IpAddress     *netip.Addr
 	DeviceName    pgtype.Text
-	ExpiresAt     time.Time
-	LastUsedAt    time.Time
-	RevokedAt     time.Time
+	ExpiresAt     pgtype.Timestamp
+	LastUsedAt    pgtype.Timestamp
+	RevokedAt     pgtype.Timestamp
 	RevokedReason pgtype.Text
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	CreatedAt     pgtype.Timestamp
+	UpdatedAt     pgtype.Timestamp
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) error {
@@ -186,7 +185,7 @@ UPDATE sessions SET refresh_token = $2, expires_at = $3, last_used_at = NOW(), u
 type UpdateSessionRefreshTokenParams struct {
 	ID           uuid.UUID
 	RefreshToken string
-	ExpiresAt    time.Time
+	ExpiresAt    pgtype.Timestamp
 }
 
 func (q *Queries) UpdateSessionRefreshToken(ctx context.Context, arg UpdateSessionRefreshTokenParams) error {

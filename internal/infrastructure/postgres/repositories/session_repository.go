@@ -29,12 +29,12 @@ func toSessionDomain(s db.Session) *session.Session {
 		UserAgent:     types.FromPGText(s.UserAgent),
 		IPAddress:     types.FromPGInet(s.IpAddress),
 		DeviceName:    types.FromPGText(s.DeviceName),
-		LastUsedAt:    s.LastUsedAt,
-		ExpiresAt:     s.ExpiresAt,
-		RevokedAt:     types.FromPGTimestamp(s.RevokedAt),
+		LastUsedAt:    types.FromPGTimestamp(s.LastUsedAt),
+		ExpiresAt:     types.FromPGTimestamp(s.ExpiresAt),
+		RevokedAt:     types.FromPGTimestampPtr(s.RevokedAt),
 		RevokedReason: types.FromNullablePGText(s.RevokedReason),
-		CreatedAt:     s.CreatedAt,
-		UpdatedAt:     s.UpdatedAt,
+		CreatedAt:     types.FromPGTimestamp(s.CreatedAt),
+		UpdatedAt:     types.FromPGTimestamp(s.UpdatedAt),
 	}
 }
 
@@ -50,11 +50,11 @@ func (r *SessionRepository) Create(ctx context.Context, s *session.Session) erro
 			IpAddress:     types.ToPGInet(s.IPAddress),
 			DeviceName:    types.ToPGText(s.DeviceName),
 			RevokedReason: types.ToNullablePGText(s.RevokedReason),
-			RevokedAt:     types.ToPGTimestamp(s.RevokedAt),
-			LastUsedAt:    s.LastUsedAt,
-			ExpiresAt:     s.ExpiresAt,
-			CreatedAt:     s.CreatedAt,
-			UpdatedAt:     s.UpdatedAt,
+			RevokedAt:     types.ToPGTimestampPtr(s.RevokedAt),
+			LastUsedAt:    types.ToPGTimestamp(s.LastUsedAt),
+			ExpiresAt:     types.ToPGTimestamp(s.ExpiresAt),
+			CreatedAt:     types.ToPGTimestamp(s.CreatedAt),
+			UpdatedAt:     types.ToPGTimestamp(s.UpdatedAt),
 		},
 	)
 }
@@ -86,7 +86,7 @@ func (r *SessionRepository) UpdateRefreshToken(ctx context.Context, id uuid.UUID
 		db.UpdateSessionRefreshTokenParams{
 			ID:           id,
 			RefreshToken: token,
-			ExpiresAt:    expires,
+			ExpiresAt:    types.ToPGTimestamp(expires),
 		},
 	)
 }

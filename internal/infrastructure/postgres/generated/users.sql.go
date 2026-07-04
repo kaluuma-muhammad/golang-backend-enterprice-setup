@@ -7,9 +7,9 @@ package db
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :exec
@@ -36,8 +36,8 @@ type CreateUserParams struct {
 	FirstName  string
 	LastName   string
 	IsVerified bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	CreatedAt  pgtype.Timestamp
+	UpdatedAt  pgtype.Timestamp
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
@@ -121,7 +121,7 @@ type UpdateUserParams struct {
 	FirstName  string
 	LastName   string
 	IsVerified bool
-	UpdatedAt  time.Time
+	UpdatedAt  pgtype.Timestamp
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
