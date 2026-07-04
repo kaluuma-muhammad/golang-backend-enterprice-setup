@@ -7,9 +7,9 @@ package db
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createToken = `-- name: CreateToken :exec
@@ -20,10 +20,9 @@ INSERT INTO tokens (
     type,
     token,
     expires_at,
-    used_at,
     created_at,
     updated_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+) VALUES ($1,$2,$3,$4,$5,$6,$7)
 `
 
 type CreateTokenParams struct {
@@ -31,10 +30,9 @@ type CreateTokenParams struct {
 	UserID    uuid.UUID
 	Type      TokenType
 	Token     string
-	ExpiresAt time.Time
-	UsedAt    time.Time
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ExpiresAt pgtype.Timestamp
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
 }
 
 func (q *Queries) CreateToken(ctx context.Context, arg CreateTokenParams) error {
@@ -44,7 +42,6 @@ func (q *Queries) CreateToken(ctx context.Context, arg CreateTokenParams) error 
 		arg.Type,
 		arg.Token,
 		arg.ExpiresAt,
-		arg.UsedAt,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)

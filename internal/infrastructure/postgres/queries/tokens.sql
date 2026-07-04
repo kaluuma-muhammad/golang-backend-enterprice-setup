@@ -6,10 +6,9 @@ INSERT INTO tokens (
     type,
     token,
     expires_at,
-    used_at,
     created_at,
     updated_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8);
+) VALUES ($1,$2,$3,$4,$5,$6,$7);
 
 -- name: FindByTokenByID :one
 

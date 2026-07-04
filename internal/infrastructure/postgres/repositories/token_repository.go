@@ -5,6 +5,7 @@ import (
 
 	domainToken "github.com/go-api/internal/domain/token"
 	db "github.com/go-api/internal/infrastructure/postgres/generated"
+	"github.com/go-api/internal/infrastructure/postgres/types"
 	"github.com/google/uuid"
 )
 
@@ -22,10 +23,10 @@ func toTokenDomain(t db.Token) *domainToken.Token {
 		UserID:    t.UserID,
 		Type:      domainToken.Type(t.Type),
 		Token:     t.Token,
-		ExpiresAt: t.ExpiresAt,
-		UsedAt:    &t.UsedAt,
-		CreatedAt: t.CreatedAt,
-		UpdatedAt: t.UpdatedAt,
+		ExpiresAt: types.FromPGTimestamp(t.ExpiresAt),
+		UsedAt:    types.FromPGTimestampPtr(t.UsedAt),
+		CreatedAt: types.FromPGTimestamp(t.CreatedAt),
+		UpdatedAt: types.FromPGTimestamp(t.UpdatedAt),
 	}
 }
 
@@ -35,10 +36,9 @@ func (r *TokenRepository) Create(ctx context.Context, token *domainToken.Token) 
 		UserID:    token.UserID,
 		Type:      db.TokenType(token.Type),
 		Token:     token.Token,
-		ExpiresAt: token.ExpiresAt,
-		UsedAt:    *token.UsedAt,
-		CreatedAt: token.CreatedAt,
-		UpdatedAt: token.UpdatedAt,
+		ExpiresAt: types.ToPGTimestamp(token.ExpiresAt),
+		CreatedAt: types.ToPGTimestamp(token.CreatedAt),
+		UpdatedAt: types.ToPGTimestamp(token.UpdatedAt),
 	})
 }
 
@@ -79,8 +79,7 @@ func (r *TokenRepository) FindByUserAndType(ctx context.Context, userID uuid.UUI
 	record, err := r.q.GetTokenByUserAndType(ctx, db.GetTokenByUserAndTypeParams{
 		UserID: userID,
 		Type:   db.TokenType(tokenType),
-	},
-	)
+	})
 
 	if err != nil {
 		return nil, err

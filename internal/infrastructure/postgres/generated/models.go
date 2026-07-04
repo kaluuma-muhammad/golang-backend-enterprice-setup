@@ -8,7 +8,6 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"net/netip"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -65,12 +64,12 @@ type Session struct {
 	UserAgent     pgtype.Text
 	IpAddress     *netip.Addr
 	DeviceName    pgtype.Text
-	LastUsedAt    time.Time
-	ExpiresAt     time.Time
-	RevokedAt     time.Time
+	LastUsedAt    pgtype.Timestamp
+	ExpiresAt     pgtype.Timestamp
+	RevokedAt     pgtype.Timestamp
 	RevokedReason pgtype.Text
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	CreatedAt     pgtype.Timestamp
+	UpdatedAt     pgtype.Timestamp
 }
 
 type Token struct {
@@ -78,10 +77,10 @@ type Token struct {
 	UserID    uuid.UUID
 	Type      TokenType
 	Token     string
-	ExpiresAt time.Time
-	UsedAt    time.Time
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ExpiresAt pgtype.Timestamp
+	UsedAt    pgtype.Timestamp
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
 }
 
 type User struct {
@@ -91,6 +90,6 @@ type User struct {
 	FirstName  string
 	LastName   string
 	IsVerified bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	CreatedAt  pgtype.Timestamp
+	UpdatedAt  pgtype.Timestamp
 }
