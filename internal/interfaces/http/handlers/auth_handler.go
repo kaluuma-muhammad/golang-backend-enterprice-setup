@@ -90,8 +90,8 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"message": "Forgot password email sent successfully"})
 }
 
-func (h *AuthHandler) VerifyAccount(c *gin.Context) {
-	var req appAuth.VerifyAccountRequest
+func (h *AuthHandler) ActivateAccount(c *gin.Context) {
+	var req appAuth.ActivateAccountRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, http.StatusBadRequest, err.Error())
@@ -105,14 +105,14 @@ func (h *AuthHandler) VerifyAccount(c *gin.Context) {
 
 	user := middleware.CurrentUser(c)
 
-	err := h.service.VerifyAccount(c.Request.Context(), user.ID, req)
+	err := h.service.ActivateAccount(c.Request.Context(), user.ID, req)
 
 	if err != nil {
 		response.Error(c, response.StatusCode(err), err.Error())
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"message": "email verified successfully"})
+	response.Success(c, http.StatusOK, gin.H{"message": "Account activated successfully"})
 }
 
 func (h *AuthHandler) ResendVerification(c *gin.Context) {
@@ -138,8 +138,8 @@ func (h *AuthHandler) ResendVerification(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"message": "Verification email sent successfully"})
 }
 
-func (h *AuthHandler) VerifyEmail(c *gin.Context) {
-	var req appAuth.VerifyEmailRequest
+func (h *AuthHandler) VerifyResetCode(c *gin.Context) {
+	var req appAuth.VerifyResetCodeRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, http.StatusBadRequest, err.Error())
@@ -151,7 +151,7 @@ func (h *AuthHandler) VerifyEmail(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.VerifyEmail(c.Request.Context(), req, c.Request.UserAgent(), c.ClientIP())
+	result, err := h.service.VerifyResetCode(c.Request.Context(), req)
 
 	if err != nil {
 		response.Error(c, response.StatusCode(err), err.Error())
@@ -174,15 +174,14 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	user := middleware.CurrentUser(c)
-	result, err := h.service.ResetPassword(c.Request.Context(), user, req, c.Request.UserAgent(), c.ClientIP())
+	err := h.service.ResetPassword(c.Request.Context(), req)
 
 	if err != nil {
 		response.Error(c, response.StatusCode(err), err.Error())
 		return
 	}
 
-	response.Success(c, http.StatusOK, result)
+	response.Success(c, http.StatusOK, gin.H{"message": "Password reset successfully"})
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {

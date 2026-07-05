@@ -48,7 +48,7 @@ func NewService(
 	}
 }
 
-func (s *Service) PerformLogin(ctx context.Context, user *backendUser.User, userAgent, ipAddress string) (*LoginResponse, error) {
+func (s *Service) AuthenticateUser(ctx context.Context, user *backendUser.User, userAgent, ipAddress string) (*LoginResponse, error) {
 	refreshToken, err := s.tokenService.CreateRefreshToken()
 	if err != nil {
 		return nil, err
@@ -76,8 +76,8 @@ func (s *Service) PerformLogin(ctx context.Context, user *backendUser.User, user
 	}
 
 	if !user.IsVerified {
-		tokenType := domainToken.AccountVerification
-		code, err := s.tokenService.CreateEmailVerificationToken(ctx, user.ID, tokenType)
+		tokenType := domainToken.AccountActivation
+		code, err := s.tokenService.CreateCodeToken(ctx, user.ID, tokenType)
 		if err != nil {
 			return nil, err
 		}
@@ -136,7 +136,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest, userAgent, 
 		return nil, err
 	}
 
-	return s.PerformLogin(ctx, user, userAgent, ipAddress)
+	return s.AuthenticateUser(ctx, user, userAgent, ipAddress)
 }
 
 func (s *Service) Login(ctx context.Context, req LoginRequest, userAgent, ipAddress string) (*LoginResponse, error) {
@@ -151,10 +151,10 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, userAgent, ipAddr
 		return nil, ErrInvalidCredentials
 	}
 
-	return s.PerformLogin(ctx, user, userAgent, ipAddress)
+	return s.AuthenticateUser(ctx, user, userAgent, ipAddress)
 }
 
-func (s *Service) VerifyAccount(ctx context.Context, userID uuid.UUID, req VerifyAccountRequest) error {
+func (s *Service) ActivateAccount(ctx context.Context, userID uuid.UUID, req ActivateAccountRequest) error {
 
 	user, err := s.users.FindByID(ctx, userID)
 	if err != nil {
@@ -169,7 +169,7 @@ func (s *Service) VerifyAccount(ctx context.Context, userID uuid.UUID, req Verif
 	token, err := s.tokenService.FindByTokenAndTypeAndUser(
 		ctx,
 		hash,
-		domainToken.AccountVerification,
+		domainToken.AccountActivation,
 		user.ID,
 	)
 
@@ -186,7 +186,7 @@ func (s *Service) VerifyAccount(ctx context.Context, userID uuid.UUID, req Verif
 	}
 
 	if token.ExpiresAt.Before(time.Now()) {
-		_ = s.tokenService.DeleteByUserAndType(ctx, user.ID, domainToken.EmailVerification)
+		_ = s.tokenService.DeleteByUserAndType(ctx, user.ID, domainToken.AccountActivation)
 
 		return ErrVerificationCodeExpired
 	}
@@ -210,8 +210,8 @@ func (s *Service) ForgotPassword(ctx context.Context, req ForgotPasswordRequest)
 		return ErrUserNotFound
 	}
 
-	tokenType := domainToken.EmailVerification
-	code, err := s.tokenService.CreateEmailVerificationToken(ctx, user.ID, tokenType)
+	tokenType := domainToken.PasswordReset
+	code, err := s.tokenService.CreateCodeToken(ctx, user.ID, tokenType)
 	if err != nil {
 		return err
 	}
@@ -240,8 +240,8 @@ func (s *Service) ResendVerification(ctx context.Context, req ResendVerification
 		return ErrUserNotFound
 	}
 
-	tokenType := domainToken.EmailVerification
-	code, err := s.tokenService.CreateEmailVerificationToken(ctx, user.ID, tokenType)
+	tokenType := domainToken.PasswordReset
+	code, err := s.tokenService.CreateCodeToken(ctx, user.ID, tokenType)
 	if err != nil {
 		return err
 	}
@@ -264,17 +264,18 @@ func (s *Service) ResendVerification(ctx context.Context, req ResendVerification
 	return nil
 }
 
-func (s *Service) VerifyEmail(ctx context.Context, req VerifyEmailRequest, userAgent, ipAddress string) (*LoginResponse, error) {
+func (s *Service) VerifyResetCode(ctx context.Context, req VerifyResetCodeRequest) (*VerifyResetCodeResponse, error) {
+
 	user, err := s.users.FindByEmail(ctx, req.Email)
 	if err != nil {
-		return nil, ErrUserNotFound
+		return nil, ErrInvalidVerificationCode
 	}
 
 	hash := s.tokenService.Hash(req.Code)
 	token, err := s.tokenService.FindByTokenAndTypeAndUser(
 		ctx,
 		hash,
-		domainToken.EmailVerification,
+		domainToken.PasswordReset,
 		user.ID,
 	)
 
@@ -291,14 +292,9 @@ func (s *Service) VerifyEmail(ctx context.Context, req VerifyEmailRequest, userA
 	}
 
 	if token.ExpiresAt.Before(time.Now()) {
-		_ = s.tokenService.DeleteByUserAndType(ctx, user.ID, domainToken.EmailVerification)
+		_ = s.tokenService.DeleteByUserAndType(ctx, user.ID, domainToken.PasswordReset)
 
 		return nil, ErrVerificationCodeExpired
-	}
-
-	err = s.users.Verify(ctx, user.ID)
-	if err != nil {
-		return nil, err
 	}
 
 	err = s.tokenService.Consume(ctx, token.ID)
@@ -306,21 +302,65 @@ func (s *Service) VerifyEmail(ctx context.Context, req VerifyEmailRequest, userA
 		return nil, err
 	}
 
-	return s.PerformLogin(ctx, user, userAgent, ipAddress)
+	resetToken, err := s.tokenService.CreateResetToken(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &VerifyResetCodeResponse{
+		ResetToken: resetToken,
+	}, nil
 }
 
-func (s *Service) ResetPassword(ctx context.Context, user *backendUser.User, req ResetPasswordRequest, userAgent, ipAddress string) (*LoginResponse, error) {
-	hash, err := s.password.Hash(req.NewPassword)
+func (s *Service) ResetPassword(ctx context.Context, req ResetPasswordRequest) error {
+	hash := s.tokenService.Hash(req.ResetToken)
+
+	token, err := s.tokenService.FindByTokenAndType(
+		ctx,
+		hash,
+		domainToken.PasswordResetGrant,
+	)
 	if err != nil {
-		return nil, err
+		return ErrInvalidResetToken
 	}
 
-	err = s.users.UpdatePassword(ctx, user.ID, hash)
-	if err != nil {
-		return nil, err
+	if token.UsedAt != nil {
+		return ErrResetTokenAlreadyUsed
 	}
 
-	return s.PerformLogin(ctx, user, userAgent, ipAddress)
+	if token.ExpiresAt.Before(time.Now()) {
+		_ = s.tokenService.DeleteByUserAndType(ctx, token.UserID, domainToken.PasswordResetGrant)
+
+		return ErrResetTokenExpired
+	}
+
+	user, err := s.users.FindByID(ctx, token.UserID)
+	if err != nil {
+		return ErrInvalidResetToken
+	}
+
+	password, err := s.password.Hash(req.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	if err := s.users.UpdatePassword(ctx, user.ID, password); err != nil {
+		return err
+	}
+
+	if err := s.tokenService.Consume(ctx, token.ID); err != nil {
+		return err
+	}
+
+	if err := s.sessions.RevokeAllSessions(
+		ctx,
+		user.ID,
+		backendSession.RevokedByPasswordChange,
+	); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (*LoginResponse, error) {

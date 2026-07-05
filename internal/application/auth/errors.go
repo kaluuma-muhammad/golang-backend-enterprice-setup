@@ -10,6 +10,12 @@ var (
 	ErrInvalidCredentials = errors.New("invalid email or password")
 	ErrUserNotVerified    = errors.New("user not verified")
 
+	// Reset Token
+	ErrInvalidResetToken     = errors.New("invalid reset token")
+	ErrInvalidToken          = errors.New("invalid token")
+	ErrResetTokenExpired     = errors.New("reset token has expired")
+	ErrResetTokenAlreadyUsed = errors.New("reset token has already been used")
+
 	// Refresh Token
 	ErrInvalidRefreshToken = errors.New("invalid refresh token")
 

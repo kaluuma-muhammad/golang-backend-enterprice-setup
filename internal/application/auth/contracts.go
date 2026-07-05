@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 
-	backendUser "github.com/go-api/internal/domain/user"
 	"github.com/google/uuid"
 )
 
@@ -22,10 +21,10 @@ type ServiceContract interface {
 		ipAddress string,
 	) (*LoginResponse, error)
 
-	VerifyAccount(
+	ActivateAccount(
 		ctx context.Context,
 		userID uuid.UUID,
-		req VerifyAccountRequest,
+		req ActivateAccountRequest,
 	) error
 
 	ForgotPassword(
@@ -38,20 +37,15 @@ type ServiceContract interface {
 		req ResendVerificationRequest,
 	) error
 
-	VerifyEmail(
+	VerifyResetCode(
 		ctx context.Context,
-		req VerifyEmailRequest,
-		userAgent string,
-		ipAddress string,
-	) (*LoginResponse, error)
+		req VerifyResetCodeRequest,
+	) (*VerifyResetCodeResponse, error)
 
 	ResetPassword(
 		ctx context.Context,
-		user *backendUser.User,
 		req ResetPasswordRequest,
-		userAgent string,
-		ipAddress string,
-	) (*LoginResponse, error)
+	) error
 
 	Refresh(
 		ctx context.Context,

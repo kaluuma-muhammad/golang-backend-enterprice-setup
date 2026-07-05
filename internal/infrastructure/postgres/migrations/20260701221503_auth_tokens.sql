@@ -1,9 +1,9 @@
 -- +goose Up
 
 CREATE TYPE token_type AS ENUM (
-    'account_verification',
-    'email_verification',
+    'account_activation',
     'password_reset',
+    'password_reset_grant',
     'magic_link',
     'email_change'
 );
