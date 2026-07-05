@@ -33,7 +33,9 @@ func SetupRouter(logger *zap.Logger, container *bootstrap.Container) *gin.Engine
 				auth.POST("/register", container.AuthHandler.Register)
 				auth.POST("/login", container.AuthHandler.Login)
 				auth.POST("/refresh", container.AuthHandler.Refresh)
-				auth.POST("/resend-verification", container.AuthHandler.ResendVerification)
+				auth.POST("/forgot-password", container.AuthHandler.ForgotPassword)
+				auth.POST("/resend-verification-code", container.AuthHandler.ResendVerification)
+				auth.POST("/verify-email", container.AuthHandler.VerifyEmail)
 			}
 		}
 
@@ -41,10 +43,8 @@ func SetupRouter(logger *zap.Logger, container *bootstrap.Container) *gin.Engine
 		{
 			protected.Use(container.AuthMiddleware.RequireAuth())
 
-			// protected.POST("/auth/activate-account", container.AuthHandler.ActivateAccount)
-			protected.POST("/auth/verify-email", container.AuthHandler.VerifyEmail)
-			// protected.POST("/auth/resend-verification", container.AuthHandler.ResendVerificationEmail)
-			// protected.POST("/auth/reset-password", container.AuthHandler.ResetPassword)
+			protected.POST("/auth/verify-account", container.AuthHandler.VerifyAccount)
+			protected.POST("/auth/reset-password", container.AuthHandler.ResetPassword)
 			protected.POST("/auth/logout", container.AuthHandler.Logout)
 			protected.POST("/auth/logout-all", container.AuthHandler.LogoutAllSessions)
 		}

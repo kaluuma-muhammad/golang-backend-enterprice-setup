@@ -23,6 +23,13 @@ type Repository interface {
 		tokenType Type,
 	) (*Token, error)
 
+	FindByTokenAndTypeAndUser(
+		ctx context.Context,
+		token string,
+		tokenType Type,
+		userID uuid.UUID,
+	) (*Token, error)
+
 	FindByUserAndType(
 		ctx context.Context,
 		userID uuid.UUID,

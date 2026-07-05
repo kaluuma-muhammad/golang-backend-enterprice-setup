@@ -22,7 +22,13 @@ type DBConfig struct {
 }
 
 type JWTConfig struct {
-	Secret string
+	Secret               string
+	Issuer               string
+	AccessTokenMinutes   int
+	RefreshTokenDays     int
+	VerificationMinutes  int
+	PasswordResetMinutes int
+	MagicLinkMinutes     int
 }
 
 type EmailConfig struct {

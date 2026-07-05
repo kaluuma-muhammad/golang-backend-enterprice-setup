@@ -8,6 +8,7 @@ var (
 	// Login/Register
 	ErrEmailAlreadyExists = errors.New("email already exists")
 	ErrInvalidCredentials = errors.New("invalid email or password")
+	ErrUserNotVerified    = errors.New("user not verified")
 
 	// Refresh Token
 	ErrInvalidRefreshToken = errors.New("invalid refresh token")

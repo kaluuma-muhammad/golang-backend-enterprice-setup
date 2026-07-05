@@ -32,6 +32,12 @@ type Repository interface {
 		id uuid.UUID,
 	) error
 
+	UpdatePassword(
+		ctx context.Context,
+		id uuid.UUID,
+		password string,
+	) error
+
 	Delete(
 		ctx context.Context,
 		id uuid.UUID,

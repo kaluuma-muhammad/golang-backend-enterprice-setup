@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"time"
@@ -11,6 +10,7 @@ import (
 	backendSession "github.com/go-api/internal/domain/session"
 	domainToken "github.com/go-api/internal/domain/token"
 	backendUser "github.com/go-api/internal/domain/user"
+	"github.com/go-api/internal/shared/config"
 	"github.com/google/uuid"
 
 	"github.com/go-api/internal/infrastructure/email"
@@ -18,6 +18,7 @@ import (
 )
 
 type Service struct {
+	cfg          *config.JWTConfig
 	users        backendUser.Repository
 	sessions     backendSession.Repository
 	password     *PasswordService
@@ -27,6 +28,7 @@ type Service struct {
 }
 
 func NewService(
+	cfg *config.Config,
 	users backendUser.Repository,
 	sessions backendSession.Repository,
 	password *PasswordService,
@@ -36,6 +38,7 @@ func NewService(
 ) *Service {
 
 	return &Service{
+		cfg:          &cfg.JWT,
 		users:        users,
 		sessions:     sessions,
 		password:     password,
@@ -43,6 +46,63 @@ func NewService(
 		emailService: emailService,
 		jwtManager:   jwtManager,
 	}
+}
+
+func (s *Service) PerformLogin(ctx context.Context, user *backendUser.User, userAgent, ipAddress string) (*LoginResponse, error) {
+	refreshToken, err := s.tokenService.CreateRefreshToken()
+	if err != nil {
+		return nil, err
+	}
+
+	session := &backendSession.Session{
+		ID:           uuid.New(),
+		UserID:       user.ID,
+		RefreshToken: refreshToken.TokenHash,
+		UserAgent:    userAgent,
+		IPAddress:    net.ParseIP(ipAddress),
+		ExpiresAt:    refreshToken.ExpiresAt,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+
+	err = s.sessions.Create(ctx, session)
+	if err != nil {
+		return nil, err
+	}
+
+	accessToken, err := s.jwtManager.GenerateAccessToken(user.ID, session.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !user.IsVerified {
+		tokenType := domainToken.AccountVerification
+		code, err := s.tokenService.CreateEmailVerificationToken(ctx, user.ID, tokenType)
+		if err != nil {
+			return nil, err
+		}
+		log.Println("Activation code sent successfully:", code)
+
+		// subject, html, text := email.VerificationTemplate(user.FirstName, code)
+
+		// err = s.emailService.Send(ctx, email.Message{
+		// 	To:      user.Email,
+		// 	Subject: subject,
+		// 	HTML:    html,
+		// 	Text:    text,
+		// })
+
+		// if err != nil {
+		// 	fmt.Println("Email verification failed:", err)
+		// }
+	}
+
+	return &LoginResponse{
+		User:         NewUserResponse(user),
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken.Token,
+		ExpiresIn:    int(s.cfg.AccessTokenMinutes),
+	}, nil
 }
 
 func (s *Service) Register(ctx context.Context, req RegisterRequest, userAgent, ipAddress string) (*LoginResponse, error) {
@@ -76,58 +136,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest, userAgent, 
 		return nil, err
 	}
 
-	refreshToken, err := s.tokenService.CreateRefreshToken()
-
-	if err != nil {
-		return nil, err
-	}
-
-	session := &backendSession.Session{
-		ID:           uuid.New(),
-		UserID:       user.ID,
-		RefreshToken: refreshToken.TokenHash,
-		UserAgent:    userAgent,
-		IPAddress:    net.ParseIP(ipAddress),
-		ExpiresAt:    refreshToken.ExpiresAt,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
-	}
-
-	err = s.sessions.Create(ctx, session)
-	if err != nil {
-		return nil, err
-	}
-
-	accessToken, err := s.jwtManager.GenerateAccessToken(user.ID, session.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	code, err := s.tokenService.CreateVerificationToken(ctx, user.ID)
-	if err != nil {
-		return nil, err
-	}
-	log.Println("Verification code sent successfully:", code)
-
-	// subject, html, text := email.VerificationTemplate(user.FirstName, code)
-
-	// err = s.emailService.Send(ctx, email.Message{
-	// 	To:      user.Email,
-	// 	Subject: subject,
-	// 	HTML:    html,
-	// 	Text:    text,
-	// })
-
-	// if err != nil {
-	// 	fmt.Println("Email verification failed:", err)
-	// }
-
-	return &LoginResponse{
-		User:         NewUserResponse(user),
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken.Token,
-		ExpiresIn:    int(jwt.AccessTokenTTL.Seconds()),
-	}, nil
+	return s.PerformLogin(ctx, user, userAgent, ipAddress)
 }
 
 func (s *Service) Login(ctx context.Context, req LoginRequest, userAgent, ipAddress string) (*LoginResponse, error) {
@@ -142,44 +151,10 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, userAgent, ipAddr
 		return nil, ErrInvalidCredentials
 	}
 
-	refreshToken, err := s.tokenService.CreateRefreshToken()
-
-	if err != nil {
-		return nil, err
-	}
-
-	session := &backendSession.Session{
-		ID:           uuid.New(),
-		UserID:       user.ID,
-		RefreshToken: refreshToken.TokenHash,
-		UserAgent:    userAgent,
-		IPAddress:    net.ParseIP(ipAddress),
-		ExpiresAt:    refreshToken.ExpiresAt,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
-	}
-
-	err = s.sessions.Create(ctx, session)
-
-	if err != nil {
-		return nil, err
-	}
-
-	accessToken, err := s.jwtManager.GenerateAccessToken(user.ID, session.ID)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &LoginResponse{
-		User:         NewUserResponse(user),
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken.Token,
-		ExpiresIn:    int(jwt.AccessTokenTTL.Seconds()),
-	}, nil
+	return s.PerformLogin(ctx, user, userAgent, ipAddress)
 }
 
-func (s *Service) VerifyEmail(ctx context.Context, userID uuid.UUID, req VerifyEmailRequest) error {
+func (s *Service) VerifyAccount(ctx context.Context, userID uuid.UUID, req VerifyAccountRequest) error {
 
 	user, err := s.users.FindByID(ctx, userID)
 	if err != nil {
@@ -191,10 +166,11 @@ func (s *Service) VerifyEmail(ctx context.Context, userID uuid.UUID, req VerifyE
 	}
 
 	hash := s.tokenService.Hash(req.Code)
-	token, err := s.tokenService.FindByTokenAndType(
+	token, err := s.tokenService.FindByTokenAndTypeAndUser(
 		ctx,
 		hash,
-		domainToken.EmailVerification,
+		domainToken.AccountVerification,
+		user.ID,
 	)
 
 	if err != nil {
@@ -228,35 +204,123 @@ func (s *Service) VerifyEmail(ctx context.Context, userID uuid.UUID, req VerifyE
 	return nil
 }
 
+func (s *Service) ForgotPassword(ctx context.Context, req ForgotPasswordRequest) error {
+	user, err := s.users.FindByEmail(ctx, req.Email)
+	if err != nil {
+		return ErrUserNotFound
+	}
+
+	tokenType := domainToken.EmailVerification
+	code, err := s.tokenService.CreateEmailVerificationToken(ctx, user.ID, tokenType)
+	if err != nil {
+		return err
+	}
+
+	log.Println("Reset password code sent successfully:", code)
+
+	// subject, html, text := email.VerificationTemplate(user.FirstName, code)
+
+	// err = s.emailService.Send(ctx, email.Message{
+	// 	To:      user.Email,
+	// 	Subject: subject,
+	// 	HTML:    html,
+	// 	Text:    text,
+	// })
+
+	// if err != nil {
+	// 	fmt.Println("Email verification failed:", err)
+	// }
+
+	return nil
+}
+
 func (s *Service) ResendVerification(ctx context.Context, req ResendVerificationRequest) error {
 	user, err := s.users.FindByEmail(ctx, req.Email)
 	if err != nil {
 		return ErrUserNotFound
 	}
 
-	if user.IsVerified {
-		return ErrUserAlreadyVerified
-	}
-
-	code, err := s.tokenService.CreateVerificationToken(ctx, user.ID)
+	tokenType := domainToken.EmailVerification
+	code, err := s.tokenService.CreateEmailVerificationToken(ctx, user.ID, tokenType)
 	if err != nil {
 		return err
 	}
 
-	subject, html, text := email.VerificationTemplate(user.FirstName, code)
+	log.Println("Resend verification code sent successfully:", code)
 
-	err = s.emailService.Send(ctx, email.Message{
-		To:      user.Email,
-		Subject: subject,
-		HTML:    html,
-		Text:    text,
-	})
+	// subject, html, text := email.VerificationTemplate(user.FirstName, code)
 
-	if err != nil {
-		fmt.Println("Email verification failed:", err)
-	}
+	// err = s.emailService.Send(ctx, email.Message{
+	// 	To:      user.Email,
+	// 	Subject: subject,
+	// 	HTML:    html,
+	// 	Text:    text,
+	// })
+
+	// if err != nil {
+	// 	fmt.Println("Email verification failed:", err)
+	// }
 
 	return nil
+}
+
+func (s *Service) VerifyEmail(ctx context.Context, req VerifyEmailRequest, userAgent, ipAddress string) (*LoginResponse, error) {
+	user, err := s.users.FindByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, ErrUserNotFound
+	}
+
+	hash := s.tokenService.Hash(req.Code)
+	token, err := s.tokenService.FindByTokenAndTypeAndUser(
+		ctx,
+		hash,
+		domainToken.EmailVerification,
+		user.ID,
+	)
+
+	if err != nil {
+		return nil, ErrInvalidVerificationCode
+	}
+
+	if token.UserID != user.ID {
+		return nil, ErrInvalidVerificationCode
+	}
+
+	if token.UsedAt != nil {
+		return nil, ErrInvalidVerificationCode
+	}
+
+	if token.ExpiresAt.Before(time.Now()) {
+		_ = s.tokenService.DeleteByUserAndType(ctx, user.ID, domainToken.EmailVerification)
+
+		return nil, ErrVerificationCodeExpired
+	}
+
+	err = s.users.Verify(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.tokenService.Consume(ctx, token.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.PerformLogin(ctx, user, userAgent, ipAddress)
+}
+
+func (s *Service) ResetPassword(ctx context.Context, user *backendUser.User, req ResetPasswordRequest, userAgent, ipAddress string) (*LoginResponse, error) {
+	hash, err := s.password.Hash(req.NewPassword)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.users.UpdatePassword(ctx, user.ID, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.PerformLogin(ctx, user, userAgent, ipAddress)
 }
 
 func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (*LoginResponse, error) {
@@ -315,7 +379,7 @@ func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (*LoginRespon
 		User:         NewUserResponse(user),
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken.Token,
-		ExpiresIn:    int(jwt.AccessTokenTTL.Seconds()),
+		ExpiresIn:    s.cfg.AccessTokenMinutes,
 	}, nil
 }
 

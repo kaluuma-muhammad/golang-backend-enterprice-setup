@@ -16,7 +16,7 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 
 	// Database
 	queries := db.New(container.DB)
-	jwtManager := jwt.NewManager(cfg.JWT.Secret)
+	jwtManager := jwt.NewManager(cfg.JWT)
 	generator := token.NewGenerator()
 
 	smtpProvider := email.NewSMTP(
@@ -37,10 +37,12 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 	tokenService := token.NewService(
 		tokenRepository,
 		generator,
+		&cfg.JWT,
 	)
 	passwordService := auth.NewPasswordService()
 
 	authService := auth.NewService(
+		cfg,
 		userRepo,
 		sessionRepo,
 		passwordService,

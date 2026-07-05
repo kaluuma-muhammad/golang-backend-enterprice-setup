@@ -2,12 +2,19 @@ package config
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
 
 func Load() (*Config, error) {
 	_ = godotenv.Load()
+
+	accessMinutes, _ := strconv.Atoi(os.Getenv("JWT_ACCESS_TOKEN_MINUTES"))
+	refreshDays, _ := strconv.Atoi(os.Getenv("JWT_REFRESH_TOKEN_DAYS"))
+	verificationMinutes, _ := strconv.Atoi(os.Getenv("EMAIL_VERIFICATION_MINUTES"))
+	passwordResetMinutes, _ := strconv.Atoi(os.Getenv("PASSWORD_RESET_MINUTES"))
+	magicLinkMinutes, _ := strconv.Atoi(os.Getenv("MAGIC_LINK_MINUTES"))
 
 	cfg := &Config{
 		App: AppConfig{
@@ -23,7 +30,13 @@ func Load() (*Config, error) {
 			SSLMode:  os.Getenv("DB_SSLMODE"),
 		},
 		JWT: JWTConfig{
-			Secret: os.Getenv("JWT_SECRET"),
+			Secret:               os.Getenv("JWT_SECRET"),
+			Issuer:               os.Getenv("JWT_ISSUER"),
+			AccessTokenMinutes:   int(accessMinutes),
+			RefreshTokenDays:     int(refreshDays),
+			VerificationMinutes:  int(verificationMinutes),
+			PasswordResetMinutes: int(passwordResetMinutes),
+			MagicLinkMinutes:     int(magicLinkMinutes),
 		},
 		Email: EmailConfig{
 			Host:     os.Getenv("EMAIL_HOST"),

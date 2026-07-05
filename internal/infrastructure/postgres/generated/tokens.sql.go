@@ -130,6 +130,33 @@ func (q *Queries) FindByTokenAndType(ctx context.Context, arg FindByTokenAndType
 	return i, err
 }
 
+const findByTokenAndTypeAndUser = `-- name: FindByTokenAndTypeAndUser :one
+
+SELECT id, user_id, type, token, expires_at, used_at, created_at, updated_at FROM tokens WHERE token = $1 AND type = $2 AND user_id = $3 LIMIT 1
+`
+
+type FindByTokenAndTypeAndUserParams struct {
+	Token  string
+	Type   TokenType
+	UserID uuid.UUID
+}
+
+func (q *Queries) FindByTokenAndTypeAndUser(ctx context.Context, arg FindByTokenAndTypeAndUserParams) (Token, error) {
+	row := q.db.QueryRow(ctx, findByTokenAndTypeAndUser, arg.Token, arg.Type, arg.UserID)
+	var i Token
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Type,
+		&i.Token,
+		&i.ExpiresAt,
+		&i.UsedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const findByTokenByID = `-- name: FindByTokenByID :one
 
 SELECT id, user_id, type, token, expires_at, used_at, created_at, updated_at FROM tokens WHERE id = $1

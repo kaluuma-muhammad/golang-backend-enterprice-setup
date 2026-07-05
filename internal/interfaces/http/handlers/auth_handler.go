@@ -67,9 +67,31 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	response.Success(c, http.StatusOK, result)
 }
 
-func (h *AuthHandler) VerifyEmail(c *gin.Context) {
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	var req appAuth.ForgotPasswordRequest
 
-	var req appAuth.VerifyEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.validator.Validate(req); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	err := h.service.ForgotPassword(c.Request.Context(), req)
+
+	if err != nil {
+		response.Error(c, response.StatusCode(err), err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Forgot password email sent successfully"})
+}
+
+func (h *AuthHandler) VerifyAccount(c *gin.Context) {
+	var req appAuth.VerifyAccountRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, http.StatusBadRequest, err.Error())
@@ -83,25 +105,14 @@ func (h *AuthHandler) VerifyEmail(c *gin.Context) {
 
 	user := middleware.CurrentUser(c)
 
-	err := h.service.VerifyEmail(c.Request.Context(), user.ID, req)
+	err := h.service.VerifyAccount(c.Request.Context(), user.ID, req)
 
 	if err != nil {
-		response.Error(
-			c,
-			response.StatusCode(err),
-			err.Error(),
-		)
-
+		response.Error(c, response.StatusCode(err), err.Error())
 		return
 	}
 
-	response.Success(
-		c,
-		http.StatusOK,
-		gin.H{
-			"message": "email verified successfully",
-		},
-	)
+	response.Success(c, http.StatusOK, gin.H{"message": "email verified successfully"})
 }
 
 func (h *AuthHandler) ResendVerification(c *gin.Context) {
@@ -125,6 +136,53 @@ func (h *AuthHandler) ResendVerification(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, gin.H{"message": "Verification email sent successfully"})
+}
+
+func (h *AuthHandler) VerifyEmail(c *gin.Context) {
+	var req appAuth.VerifyEmailRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.validator.Validate(req); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	result, err := h.service.VerifyEmail(c.Request.Context(), req, c.Request.UserAgent(), c.ClientIP())
+
+	if err != nil {
+		response.Error(c, response.StatusCode(err), err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, result)
+}
+
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req appAuth.ResetPasswordRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.validator.Validate(req); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	user := middleware.CurrentUser(c)
+	result, err := h.service.ResetPassword(c.Request.Context(), user, req, c.Request.UserAgent(), c.ClientIP())
+
+	if err != nil {
+		response.Error(c, response.StatusCode(err), err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, result)
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
