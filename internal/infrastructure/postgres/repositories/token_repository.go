@@ -71,6 +71,20 @@ func (r *TokenRepository) FindByTokenAndType(ctx context.Context, token string, 
 	return toTokenDomain(record), nil
 }
 
+func (r *TokenRepository) FindByTokenAndTypeAndUser(ctx context.Context, token string, tokenType domainToken.Type, userID uuid.UUID) (*domainToken.Token, error) {
+	record, err := r.q.FindByTokenAndTypeAndUser(ctx, db.FindByTokenAndTypeAndUserParams{
+		Token:  token,
+		Type:   db.TokenType(tokenType),
+		UserID: userID,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return toTokenDomain(record), nil
+}
+
 func (r *TokenRepository) MarkUsed(ctx context.Context, id uuid.UUID) error {
 	return r.q.MarkTokenAsUsed(ctx, id)
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	domainToken "github.com/go-api/internal/domain/token"
+	"github.com/go-api/internal/shared/config"
 
 	"github.com/google/uuid"
 )
@@ -12,14 +13,14 @@ import (
 type Service struct {
 	repository domainToken.Repository
 	generator  *Generator
+	cfg        *config.JWTConfig
 }
 
-const RefreshTokenTTL = 7 * 24 * time.Hour
-
-func NewService(repository domainToken.Repository, generator *Generator) *Service {
+func NewService(repository domainToken.Repository, generator *Generator, cfg *config.JWTConfig) *Service {
 	return &Service{
 		repository: repository,
 		generator:  generator,
+		cfg:        cfg,
 	}
 }
 
@@ -92,7 +93,7 @@ func (s *Service) CreateRefreshToken() (*RefreshTokenResult, error) {
 	return &RefreshTokenResult{
 		Token:     token,
 		TokenHash: hash,
-		ExpiresAt: time.Now().Add(RefreshTokenTTL),
+		ExpiresAt: time.Now().Add(time.Duration(s.cfg.RefreshTokenDays) * 24 * time.Hour),
 	}, nil
 }
 
@@ -101,7 +102,7 @@ func (s *Service) Hash(token string) string {
 	return s.generator.Hash(token)
 }
 
-func (s *Service) CreateVerificationToken(ctx context.Context, userID uuid.UUID) (string, error) {
+func (s *Service) CreateEmailVerificationToken(ctx context.Context, userID uuid.UUID, tokenType domainToken.Type) (string, error) {
 	code, err := s.generator.GenerateCode(6)
 	if err != nil {
 		return "", err
@@ -109,12 +110,12 @@ func (s *Service) CreateVerificationToken(ctx context.Context, userID uuid.UUID)
 
 	hash := s.generator.Hash(code)
 
-	_ = s.repository.DeleteByUserAndType(ctx, userID, domainToken.EmailVerification)
+	_ = s.repository.DeleteByUserAndType(ctx, userID, tokenType)
 
 	err = s.repository.Create(ctx, &domainToken.Token{
 		ID:        uuid.New(),
 		UserID:    userID,
-		Type:      domainToken.EmailVerification,
+		Type:      tokenType,
 		Token:     hash,
 		ExpiresAt: time.Now().Add(15 * time.Minute),
 		CreatedAt: time.Now(),
@@ -134,6 +135,10 @@ func (s *Service) DeleteByUserAndType(ctx context.Context, userID uuid.UUID, tok
 
 func (s *Service) FindByTokenAndType(ctx context.Context, token string, tokenType domainToken.Type) (*domainToken.Token, error) {
 	return s.repository.FindByTokenAndType(ctx, token, tokenType)
+}
+
+func (s *Service) FindByTokenAndTypeAndUser(ctx context.Context, token string, tokenType domainToken.Type, userID uuid.UUID) (*domainToken.Token, error) {
+	return s.repository.FindByTokenAndTypeAndUser(ctx, token, tokenType, userID)
 }
 
 func (s *Service) FindByUserAndType(ctx context.Context, userID uuid.UUID, tokenType domainToken.Type) (*domainToken.Token, error) {

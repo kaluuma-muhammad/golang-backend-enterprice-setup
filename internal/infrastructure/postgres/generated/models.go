@@ -16,10 +16,11 @@ import (
 type TokenType string
 
 const (
-	TokenTypeEmailVerification TokenType = "email_verification"
-	TokenTypePasswordReset     TokenType = "password_reset"
-	TokenTypeMagicLink         TokenType = "magic_link"
-	TokenTypeEmailChange       TokenType = "email_change"
+	TokenTypeAccountVerification TokenType = "account_verification"
+	TokenTypeEmailVerification   TokenType = "email_verification"
+	TokenTypePasswordReset       TokenType = "password_reset"
+	TokenTypeMagicLink           TokenType = "magic_link"
+	TokenTypeEmailChange         TokenType = "email_change"
 )
 
 func (e *TokenType) Scan(src interface{}) error {

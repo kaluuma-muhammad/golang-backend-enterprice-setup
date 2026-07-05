@@ -94,6 +94,14 @@ func (r *UserRepository) Verify(ctx context.Context, id uuid.UUID) error {
 	return r.q.VerifyUser(ctx, id)
 }
 
+func (r *UserRepository) UpdatePassword(ctx context.Context, id uuid.UUID, password string) error {
+
+	return r.q.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+		ID:       id,
+		Password: password,
+	})
+}
+
 func (r *UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
 
 	return r.q.DeleteUser(ctx, id)

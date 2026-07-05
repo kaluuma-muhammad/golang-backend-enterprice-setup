@@ -26,6 +26,10 @@ SELECT * FROM tokens WHERE user_id = $1 AND type = $2 AND used_at IS NULL LIMIT 
 
 SELECT * FROM tokens WHERE token = $1 AND type = $2;
 
+-- name: FindByTokenAndTypeAndUser :one
+
+SELECT * FROM tokens WHERE token = $1 AND type = $2 AND user_id = $3 LIMIT 1;
+
 -- name: MarkTokenAsUsed :exec
 
 UPDATE tokens SET used_at = NOW(), updated_at = NOW() WHERE id = $1;

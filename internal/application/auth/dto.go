@@ -12,8 +12,12 @@ type LoginRequest struct {
 	Password string `json:"password" validate:"required"`
 }
 
-type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token" validate:"required"`
+type VerifyAccountRequest struct {
+	Code string `json:"code" validate:"required,len=6,numeric"`
+}
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email" validate:"required,email"`
 }
 
 type ResendVerificationRequest struct {
@@ -21,7 +25,16 @@ type ResendVerificationRequest struct {
 }
 
 type VerifyEmailRequest struct {
-	Code string `json:"code" validate:"required,len=6,numeric"`
+	Email string `json:"email" validate:"required,email"`
+	Code  string `json:"code" validate:"required,len=6,numeric"`
+}
+
+type ResetPasswordRequest struct {
+	NewPassword string `json:"new_password" validate:"required"`
+}
+
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" validate:"required"`
 }
 
 type LoginResponse struct {

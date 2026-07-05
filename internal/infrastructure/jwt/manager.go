@@ -3,19 +3,22 @@ package jwt
 import (
 	"time"
 
+	"github.com/go-api/internal/shared/config"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
 type Manager struct {
-	secret []byte
+	secret         []byte
+	issuer         string
+	accessTokenTTL time.Duration
 }
 
-const AccessTokenTTL = 15 * time.Minute
-
-func NewManager(secret string) *Manager {
+func NewManager(cfg config.JWTConfig) *Manager {
 	return &Manager{
-		secret: []byte(secret),
+		secret:         []byte(cfg.Secret),
+		issuer:         cfg.Issuer,
+		accessTokenTTL: time.Duration(cfg.AccessTokenMinutes) * time.Minute,
 	}
 }
 
@@ -24,7 +27,7 @@ func (m *Manager) GenerateAccessToken(userID, sessionID uuid.UUID) (string, erro
 		UserID:    userID,
 		SessionID: sessionID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(AccessTokenTTL)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(m.accessTokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
