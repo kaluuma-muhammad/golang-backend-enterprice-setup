@@ -97,12 +97,39 @@ func (s *Service) CreateRefreshToken() (*RefreshTokenResult, error) {
 	}, nil
 }
 
+func (s *Service) CreateResetToken(ctx context.Context, userID uuid.UUID) (string, error) {
+	token, err := s.generator.Generate()
+	if err != nil {
+		return "", err
+	}
+
+	hash := s.generator.Hash(token)
+
+	err = s.repository.Create(
+		ctx,
+		&domainToken.Token{
+			ID:        uuid.New(),
+			UserID:    userID,
+			Type:      domainToken.PasswordResetGrant,
+			Token:     hash,
+			ExpiresAt: time.Now().Add(15 * time.Minute),
+			CreatedAt: time.Now(),
+		},
+	)
+
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
+}
+
 func (s *Service) Hash(token string) string {
 
 	return s.generator.Hash(token)
 }
 
-func (s *Service) CreateEmailVerificationToken(ctx context.Context, userID uuid.UUID, tokenType domainToken.Type) (string, error) {
+func (s *Service) CreateCodeToken(ctx context.Context, userID uuid.UUID, tokenType domainToken.Type) (string, error) {
 	code, err := s.generator.GenerateCode(6)
 	if err != nil {
 		return "", err
