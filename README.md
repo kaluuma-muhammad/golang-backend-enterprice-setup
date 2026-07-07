@@ -488,6 +488,8 @@ SMTP_FROM=no-reply@example.com
 * Logout All Devices (planned)
 * Email Verification
 * Resend Verification
+* Forgot Password
+* Password Reset
 * Authentication Middleware
 * Email Verification Middleware
 * Structured Logging
@@ -499,8 +501,6 @@ SMTP_FROM=no-reply@example.com
 
 # Planned Features
 
-* Forgot Password
-* Password Reset
 * OAuth (Google, GitHub, Microsoft)
 * Role-Based Access Control (RBAC)
 * Permission-Based Authorization
