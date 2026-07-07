@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"log"
 	"net"
 	"time"
 
@@ -81,20 +80,8 @@ func (s *Service) AuthenticateUser(ctx context.Context, user *backendUser.User, 
 		if err != nil {
 			return nil, err
 		}
-		log.Println("Activation code sent successfully:", code)
 
-		// subject, html, text := email.VerificationTemplate(user.FirstName, code)
-
-		// err = s.emailService.Send(ctx, email.Message{
-		// 	To:      user.Email,
-		// 	Subject: subject,
-		// 	HTML:    html,
-		// 	Text:    text,
-		// })
-
-		// if err != nil {
-		// 	fmt.Println("Email verification failed:", err)
-		// }
+		s.emailService.SendVerificationEmail(ctx, user, code)
 	}
 
 	return &LoginResponse{
@@ -216,20 +203,7 @@ func (s *Service) ForgotPassword(ctx context.Context, req ForgotPasswordRequest)
 		return err
 	}
 
-	log.Println("Reset password code sent successfully:", code)
-
-	// subject, html, text := email.VerificationTemplate(user.FirstName, code)
-
-	// err = s.emailService.Send(ctx, email.Message{
-	// 	To:      user.Email,
-	// 	Subject: subject,
-	// 	HTML:    html,
-	// 	Text:    text,
-	// })
-
-	// if err != nil {
-	// 	fmt.Println("Email verification failed:", err)
-	// }
+	s.emailService.SendPasswordResetEmail(ctx, user, code)
 
 	return nil
 }
@@ -246,20 +220,7 @@ func (s *Service) ResendVerification(ctx context.Context, req ResendVerification
 		return err
 	}
 
-	log.Println("Resend verification code sent successfully:", code)
-
-	// subject, html, text := email.VerificationTemplate(user.FirstName, code)
-
-	// err = s.emailService.Send(ctx, email.Message{
-	// 	To:      user.Email,
-	// 	Subject: subject,
-	// 	HTML:    html,
-	// 	Text:    text,
-	// })
-
-	// if err != nil {
-	// 	fmt.Println("Email verification failed:", err)
-	// }
+	s.emailService.SendPasswordResetEmail(ctx, user, code)
 
 	return nil
 }
