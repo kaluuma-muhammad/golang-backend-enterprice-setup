@@ -1,32 +1,19 @@
 package email
 
 import (
-	"context"
-	"errors"
+	"github.com/go-api/internal/shared/config"
 )
 
 type Service struct {
+	cfg      *config.Config
 	provider Provider
+	renderer *Renderer
 }
 
-func New(provider Provider) *Service {
+func New(cfg *config.Config, provider Provider, renderer *Renderer) *Service {
 	return &Service{
+		cfg:      cfg,
 		provider: provider,
+		renderer: renderer,
 	}
-}
-
-func (s *Service) Send(ctx context.Context, message Message) error {
-	if message.To == "" {
-		return errors.New("recipient email is required")
-	}
-
-	if message.Subject == "" {
-		return errors.New("email subject is required")
-	}
-
-	if message.HTML == "" && message.Text == "" {
-		return errors.New("email body must contain either HTML or plain text")
-	}
-
-	return s.provider.Send(ctx, message)
 }

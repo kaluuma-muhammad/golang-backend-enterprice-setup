@@ -32,9 +32,11 @@ type JWTConfig struct {
 }
 
 type EmailConfig struct {
-	Host     string
-	Port     string
-	Username string
-	Password string
-	From     string
+	Host        string
+	Port        int
+	Username    string
+	Password    string
+	FromAddress string
+	FromName    string
+	Encryption  string
 }

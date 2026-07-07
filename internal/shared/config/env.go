@@ -15,6 +15,7 @@ func Load() (*Config, error) {
 	verificationMinutes, _ := strconv.Atoi(os.Getenv("EMAIL_VERIFICATION_MINUTES"))
 	passwordResetMinutes, _ := strconv.Atoi(os.Getenv("PASSWORD_RESET_MINUTES"))
 	magicLinkMinutes, _ := strconv.Atoi(os.Getenv("MAGIC_LINK_MINUTES"))
+	emailPort, _ := strconv.Atoi(os.Getenv("EMAIL_PORT"))
 
 	cfg := &Config{
 		App: AppConfig{
@@ -39,11 +40,13 @@ func Load() (*Config, error) {
 			MagicLinkMinutes:     int(magicLinkMinutes),
 		},
 		Email: EmailConfig{
-			Host:     os.Getenv("EMAIL_HOST"),
-			Port:     os.Getenv("EMAIL_PORT"),
-			Username: os.Getenv("EMAIL_USERNAME"),
-			Password: os.Getenv("EMAIL_PASSWORD"),
-			From:     os.Getenv("EMAIL_FROM"),
+			Host:        os.Getenv("EMAIL_HOST"),
+			Port:        emailPort,
+			Username:    os.Getenv("EMAIL_USERNAME"),
+			Password:    os.Getenv("EMAIL_PASSWORD"),
+			FromAddress: os.Getenv("EMAIL_FROM_ADDRESS"),
+			FromName:    os.Getenv("EMAIL_FROM_NAME"),
+			Encryption:  os.Getenv("EMAIL_ENCRYPTION"),
 		},
 	}
 

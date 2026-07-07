@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"log"
+
 	"github.com/go-api/internal/application/auth"
 	"github.com/go-api/internal/application/token"
 	"github.com/go-api/internal/infrastructure/email"
@@ -19,13 +21,23 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 	jwtManager := jwt.NewManager(cfg.JWT)
 	generator := token.NewGenerator()
 
-	smtpProvider := email.NewSMTP(
+	renderer, err := email.NewRenderer()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	provider, err := email.NewSMTP(
 		cfg.Email.Host,
 		cfg.Email.Port,
 		cfg.Email.Username,
 		cfg.Email.Password,
-		cfg.Email.From,
+		cfg.Email.FromAddress,
+		cfg.Email.FromName,
+		cfg.Email.Encryption,
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Repositories
 	userRepo := repositories.NewUserRepository(queries)
@@ -33,7 +45,8 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 	tokenRepository := repositories.NewTokenRepository(queries)
 
 	// Application Services
-	emailService := email.New(smtpProvider)
+	emailService := email.New(cfg, provider, renderer)
+
 	tokenService := token.NewService(
 		tokenRepository,
 		generator,
