@@ -14,14 +14,16 @@ import (
 )
 
 const createSession = `-- name: CreateSession :exec
-
 INSERT INTO sessions (
     id,
     user_id,
     refresh_token,
     user_agent,
     ip_address,
-    device_name,
+    device_id,
+    platform,
+    browser,
+    last_seen_at,
     expires_at,
     last_used_at,
     revoked_at,
@@ -30,7 +32,7 @@ INSERT INTO sessions (
     updated_at
 )
 VALUES (
-    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12
+    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15
 )
 `
 
@@ -40,7 +42,10 @@ type CreateSessionParams struct {
 	RefreshToken  string
 	UserAgent     pgtype.Text
 	IpAddress     *netip.Addr
-	DeviceName    pgtype.Text
+	DeviceID      pgtype.Text
+	Platform      pgtype.Text
+	Browser       pgtype.Text
+	LastSeenAt    pgtype.Timestamp
 	ExpiresAt     pgtype.Timestamp
 	LastUsedAt    pgtype.Timestamp
 	RevokedAt     pgtype.Timestamp
@@ -56,7 +61,10 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) er
 		arg.RefreshToken,
 		arg.UserAgent,
 		arg.IpAddress,
-		arg.DeviceName,
+		arg.DeviceID,
+		arg.Platform,
+		arg.Browser,
+		arg.LastSeenAt,
 		arg.ExpiresAt,
 		arg.LastUsedAt,
 		arg.RevokedAt,
@@ -68,7 +76,6 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) er
 }
 
 const deleteSessionByID = `-- name: DeleteSessionByID :exec
-
 DELETE FROM sessions WHERE id = $1
 `
 
@@ -78,7 +85,6 @@ func (q *Queries) DeleteSessionByID(ctx context.Context, id uuid.UUID) error {
 }
 
 const deleteSessionsByUserID = `-- name: DeleteSessionsByUserID :exec
-
 DELETE FROM sessions WHERE user_id = $1
 `
 
@@ -88,8 +94,7 @@ func (q *Queries) DeleteSessionsByUserID(ctx context.Context, userID uuid.UUID) 
 }
 
 const getSessionByID = `-- name: GetSessionByID :one
-
-SELECT id, user_id, refresh_token, user_agent, ip_address, device_name, last_used_at, expires_at, revoked_at, revoked_reason, created_at, updated_at FROM sessions WHERE id = $1
+SELECT id, user_id, refresh_token, user_agent, ip_address, device_id, platform, browser, last_seen_at, last_used_at, expires_at, revoked_at, revoked_reason, created_at, updated_at FROM sessions WHERE id = $1
 `
 
 func (q *Queries) GetSessionByID(ctx context.Context, id uuid.UUID) (Session, error) {
@@ -101,7 +106,10 @@ func (q *Queries) GetSessionByID(ctx context.Context, id uuid.UUID) (Session, er
 		&i.RefreshToken,
 		&i.UserAgent,
 		&i.IpAddress,
-		&i.DeviceName,
+		&i.DeviceID,
+		&i.Platform,
+		&i.Browser,
+		&i.LastSeenAt,
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
@@ -113,8 +121,7 @@ func (q *Queries) GetSessionByID(ctx context.Context, id uuid.UUID) (Session, er
 }
 
 const getSessionByToken = `-- name: GetSessionByToken :one
-
-SELECT id, user_id, refresh_token, user_agent, ip_address, device_name, last_used_at, expires_at, revoked_at, revoked_reason, created_at, updated_at FROM sessions WHERE refresh_token = $1
+SELECT id, user_id, refresh_token, user_agent, ip_address, device_id, platform, browser, last_seen_at, last_used_at, expires_at, revoked_at, revoked_reason, created_at, updated_at FROM sessions WHERE refresh_token = $1
 `
 
 func (q *Queries) GetSessionByToken(ctx context.Context, refreshToken string) (Session, error) {
@@ -126,7 +133,10 @@ func (q *Queries) GetSessionByToken(ctx context.Context, refreshToken string) (S
 		&i.RefreshToken,
 		&i.UserAgent,
 		&i.IpAddress,
-		&i.DeviceName,
+		&i.DeviceID,
+		&i.Platform,
+		&i.Browser,
+		&i.LastSeenAt,
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
@@ -137,8 +147,47 @@ func (q *Queries) GetSessionByToken(ctx context.Context, refreshToken string) (S
 	return i, err
 }
 
-const revokeAllSessions = `-- name: RevokeAllSessions :exec
+const getSessionsByUserID = `-- name: GetSessionsByUserID :many
+SELECT id, user_id, refresh_token, user_agent, ip_address, device_id, platform, browser, last_seen_at, last_used_at, expires_at, revoked_at, revoked_reason, created_at, updated_at FROM sessions WHERE user_id = $1 AND revoked_at IS NULL ORDER BY last_seen_at DESC
+`
 
+func (q *Queries) GetSessionsByUserID(ctx context.Context, userID uuid.UUID) ([]Session, error) {
+	rows, err := q.db.Query(ctx, getSessionsByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Session
+	for rows.Next() {
+		var i Session
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.RefreshToken,
+			&i.UserAgent,
+			&i.IpAddress,
+			&i.DeviceID,
+			&i.Platform,
+			&i.Browser,
+			&i.LastSeenAt,
+			&i.LastUsedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.RevokedReason,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const revokeAllSessions = `-- name: RevokeAllSessions :exec
 UPDATE sessions SET revoked_at = NOW(), revoked_reason = $2, updated_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL
 `
 
@@ -152,33 +201,30 @@ func (q *Queries) RevokeAllSessions(ctx context.Context, arg RevokeAllSessionsPa
 	return err
 }
 
-const revokeRefreshToken = `-- name: RevokeRefreshToken :exec
-
+const revokeSession = `-- name: RevokeSession :exec
 UPDATE sessions SET revoked_at = NOW(), revoked_reason = $2, updated_at = NOW() WHERE id = $1
 `
 
-type RevokeRefreshTokenParams struct {
+type RevokeSessionParams struct {
 	ID            uuid.UUID
 	RevokedReason pgtype.Text
 }
 
-func (q *Queries) RevokeRefreshToken(ctx context.Context, arg RevokeRefreshTokenParams) error {
-	_, err := q.db.Exec(ctx, revokeRefreshToken, arg.ID, arg.RevokedReason)
+func (q *Queries) RevokeSession(ctx context.Context, arg RevokeSessionParams) error {
+	_, err := q.db.Exec(ctx, revokeSession, arg.ID, arg.RevokedReason)
 	return err
 }
 
-const updateSessionLastUsed = `-- name: UpdateSessionLastUsed :exec
-
-UPDATE sessions SET last_used_at = NOW(), updated_at = NOW() WHERE id = $1
+const updateSessionActivity = `-- name: UpdateSessionActivity :exec
+UPDATE sessions SET last_used_at = NOW(), last_seen_at = NOW(), updated_at = NOW() WHERE id = $1
 `
 
-func (q *Queries) UpdateSessionLastUsed(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, updateSessionLastUsed, id)
+func (q *Queries) UpdateSessionActivity(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, updateSessionActivity, id)
 	return err
 }
 
 const updateSessionRefreshToken = `-- name: UpdateSessionRefreshToken :exec
-
 UPDATE sessions SET refresh_token = $2, expires_at = $3, last_used_at = NOW(), updated_at = NOW() WHERE id = $1
 `
 

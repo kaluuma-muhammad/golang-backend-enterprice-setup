@@ -13,6 +13,51 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type LoginStatus string
+
+const (
+	LoginStatusSuccess LoginStatus = "success"
+	LoginStatusFailed  LoginStatus = "failed"
+	LoginStatusLogout  LoginStatus = "logout"
+	LoginStatusExpired LoginStatus = "expired"
+	LoginStatusRevoked LoginStatus = "revoked"
+)
+
+func (e *LoginStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = LoginStatus(s)
+	case string:
+		*e = LoginStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for LoginStatus: %T", src)
+	}
+	return nil
+}
+
+type NullLoginStatus struct {
+	LoginStatus LoginStatus
+	Valid       bool // Valid is true if LoginStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullLoginStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.LoginStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.LoginStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullLoginStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.LoginStatus), nil
+}
+
 type TokenType string
 
 const (
@@ -58,13 +103,44 @@ func (ns NullTokenType) Value() (driver.Value, error) {
 	return string(ns.TokenType), nil
 }
 
+type AuditLog struct {
+	ID         uuid.UUID
+	UserID     pgtype.UUID
+	Action     string
+	EntityType pgtype.Text
+	EntityID   pgtype.UUID
+	IpAddress  *netip.Addr
+	UserAgent  pgtype.Text
+	Metadata   []byte
+	CreatedAt  pgtype.Timestamp
+	UpdatedAt  pgtype.Timestamp
+}
+
+type LoginHistory struct {
+	ID            uuid.UUID
+	UserID        pgtype.UUID
+	SessionID     pgtype.UUID
+	Status        LoginStatus
+	IpAddress     *netip.Addr
+	UserAgent     pgtype.Text
+	DeviceName    pgtype.Text
+	FailureReason pgtype.Text
+	LoginAt       pgtype.Timestamp
+	LogoutAt      pgtype.Timestamp
+	CreatedAt     pgtype.Timestamp
+	UpdatedAt     pgtype.Timestamp
+}
+
 type Session struct {
 	ID            uuid.UUID
 	UserID        uuid.UUID
 	RefreshToken  string
 	UserAgent     pgtype.Text
 	IpAddress     *netip.Addr
-	DeviceName    pgtype.Text
+	DeviceID      pgtype.Text
+	Platform      pgtype.Text
+	Browser       pgtype.Text
+	LastSeenAt    pgtype.Timestamp
 	LastUsedAt    pgtype.Timestamp
 	ExpiresAt     pgtype.Timestamp
 	RevokedAt     pgtype.Timestamp
@@ -85,12 +161,15 @@ type Token struct {
 }
 
 type User struct {
-	ID         uuid.UUID
-	Email      string
-	Password   string
-	FirstName  string
-	LastName   string
-	IsVerified bool
-	CreatedAt  pgtype.Timestamp
-	UpdatedAt  pgtype.Timestamp
+	ID                  uuid.UUID
+	Email               string
+	Password            string
+	FirstName           string
+	LastName            string
+	IsVerified          bool
+	FailedLoginAttempts int32
+	LockedUntil         pgtype.Timestamp
+	LastLoginAt         pgtype.Timestamp
+	CreatedAt           pgtype.Timestamp
+	UpdatedAt           pgtype.Timestamp
 }

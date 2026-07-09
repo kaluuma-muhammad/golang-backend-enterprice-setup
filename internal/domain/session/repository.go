@@ -18,6 +18,16 @@ type Repository interface {
 		token string,
 	) (*Session, error)
 
+	FindByID(
+		ctx context.Context,
+		id uuid.UUID,
+	) (*Session, error)
+
+	GetSessionsByUserID(
+		ctx context.Context,
+		userID uuid.UUID,
+	) ([]*Session, error)
+
 	UpdateRefreshToken(
 		ctx context.Context,
 		sessionID uuid.UUID,
@@ -25,12 +35,7 @@ type Repository interface {
 		expiresAt time.Time,
 	) error
 
-	FindByID(
-		ctx context.Context,
-		id uuid.UUID,
-	) (*Session, error)
-
-	RevokeRefreshToken(
+	RevokeSession(
 		ctx context.Context,
 		sessionID uuid.UUID,
 		reason string,
@@ -42,7 +47,7 @@ type Repository interface {
 		reason string,
 	) error
 
-	UpdateLastUsedAt(
+	UpdateSessionActivity(
 		ctx context.Context,
 		sessionID uuid.UUID,
 	) error

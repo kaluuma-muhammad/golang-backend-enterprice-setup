@@ -26,6 +26,6 @@ CREATE INDEX idx_tokens_expires ON tokens(expires_at);
 
 -- +goose Down
 
-DROP TABLE tokens;
+DROP TABLE IF EXISTS tokens;
 
-DROP TYPE token_type;
+DROP TYPE IF EXISTS token_type;

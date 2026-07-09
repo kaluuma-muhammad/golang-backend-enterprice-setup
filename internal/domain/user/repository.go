@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -36,6 +37,29 @@ type Repository interface {
 		ctx context.Context,
 		id uuid.UUID,
 		password string,
+	) error
+
+	// Security
+
+	IncrementFailedLoginAttempts(
+		ctx context.Context,
+		id uuid.UUID,
+	) error
+
+	ResetFailedLoginAttempts(
+		ctx context.Context,
+		id uuid.UUID,
+	) error
+
+	LockUserAccount(
+		ctx context.Context,
+		id uuid.UUID,
+		until time.Time,
+	) error
+
+	UpdateLastLogin(
+		ctx context.Context,
+		id uuid.UUID,
 	) error
 
 	Delete(

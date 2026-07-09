@@ -3,18 +3,22 @@ package repositories
 import (
 	"context"
 
+	"github.com/go-api/internal/application/common"
 	domainToken "github.com/go-api/internal/domain/token"
 	db "github.com/go-api/internal/infrastructure/postgres/generated"
 	"github.com/go-api/internal/infrastructure/postgres/types"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type TokenRepository struct {
-	q *db.Queries
+	pool *pgxpool.Pool
 }
 
-func NewTokenRepository(q *db.Queries) *TokenRepository {
-	return &TokenRepository{q: q}
+func NewTokenRepository(pool *pgxpool.Pool) *TokenRepository {
+	return &TokenRepository{
+		pool: pool,
+	}
 }
 
 func toTokenDomain(t db.Token) *domainToken.Token {
@@ -31,7 +35,9 @@ func toTokenDomain(t db.Token) *domainToken.Token {
 }
 
 func (r *TokenRepository) Create(ctx context.Context, token *domainToken.Token) error {
-	return r.q.CreateToken(ctx, db.CreateTokenParams{
+	q := common.GetQueries(ctx, r.pool)
+
+	return q.CreateToken(ctx, db.CreateTokenParams{
 		ID:        token.ID,
 		UserID:    token.UserID,
 		Type:      db.TokenType(token.Type),
@@ -43,7 +49,9 @@ func (r *TokenRepository) Create(ctx context.Context, token *domainToken.Token) 
 }
 
 func (r *TokenRepository) FindByID(ctx context.Context, id uuid.UUID) (*domainToken.Token, error) {
-	t, err := r.q.FindByTokenByID(ctx, id)
+	q := common.GetQueries(ctx, r.pool)
+
+	t, err := q.FindByTokenByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +59,9 @@ func (r *TokenRepository) FindByID(ctx context.Context, id uuid.UUID) (*domainTo
 }
 
 func (r *TokenRepository) FindByToken(ctx context.Context, token string) (*domainToken.Token, error) {
-	t, err := r.q.FindByToken(ctx, token)
+	q := common.GetQueries(ctx, r.pool)
+
+	t, err := q.FindByToken(ctx, token)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +69,9 @@ func (r *TokenRepository) FindByToken(ctx context.Context, token string) (*domai
 }
 
 func (r *TokenRepository) FindByTokenAndType(ctx context.Context, token string, tokenType domainToken.Type) (*domainToken.Token, error) {
-	record, err := r.q.FindByTokenAndType(ctx, db.FindByTokenAndTypeParams{
+	q := common.GetQueries(ctx, r.pool)
+
+	record, err := q.FindByTokenAndType(ctx, db.FindByTokenAndTypeParams{
 		Token: token,
 		Type:  db.TokenType(tokenType),
 	})
@@ -72,7 +84,9 @@ func (r *TokenRepository) FindByTokenAndType(ctx context.Context, token string, 
 }
 
 func (r *TokenRepository) FindByTokenAndTypeAndUser(ctx context.Context, token string, tokenType domainToken.Type, userID uuid.UUID) (*domainToken.Token, error) {
-	record, err := r.q.FindByTokenAndTypeAndUser(ctx, db.FindByTokenAndTypeAndUserParams{
+	q := common.GetQueries(ctx, r.pool)
+
+	record, err := q.FindByTokenAndTypeAndUser(ctx, db.FindByTokenAndTypeAndUserParams{
 		Token:  token,
 		Type:   db.TokenType(tokenType),
 		UserID: userID,
@@ -86,11 +100,14 @@ func (r *TokenRepository) FindByTokenAndTypeAndUser(ctx context.Context, token s
 }
 
 func (r *TokenRepository) MarkUsed(ctx context.Context, id uuid.UUID) error {
-	return r.q.MarkTokenAsUsed(ctx, id)
+	q := common.GetQueries(ctx, r.pool)
+	return q.MarkTokenAsUsed(ctx, id)
 }
 
 func (r *TokenRepository) FindByUserAndType(ctx context.Context, userID uuid.UUID, tokenType domainToken.Type) (*domainToken.Token, error) {
-	record, err := r.q.GetTokenByUserAndType(ctx, db.GetTokenByUserAndTypeParams{
+	q := common.GetQueries(ctx, r.pool)
+
+	record, err := q.GetTokenByUserAndType(ctx, db.GetTokenByUserAndTypeParams{
 		UserID: userID,
 		Type:   db.TokenType(tokenType),
 	})
@@ -103,16 +120,19 @@ func (r *TokenRepository) FindByUserAndType(ctx context.Context, userID uuid.UUI
 }
 
 func (r *TokenRepository) DeleteByUserAndType(ctx context.Context, userID uuid.UUID, tokenType domainToken.Type) error {
-	return r.q.DeleteTokenByUserAndType(ctx, db.DeleteTokenByUserAndTypeParams{
+	q := common.GetQueries(ctx, r.pool)
+	return q.DeleteTokenByUserAndType(ctx, db.DeleteTokenByUserAndTypeParams{
 		UserID: userID,
 		Type:   db.TokenType(tokenType),
 	})
 }
 
 func (r *TokenRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return r.q.DeleteToken(ctx, id)
+	q := common.GetQueries(ctx, r.pool)
+	return q.DeleteToken(ctx, id)
 }
 
 func (r *TokenRepository) DeleteExpired(ctx context.Context) error {
-	return r.q.DeleteExpiredTokens(ctx)
+	q := common.GetQueries(ctx, r.pool)
+	return q.DeleteExpiredTokens(ctx)
 }

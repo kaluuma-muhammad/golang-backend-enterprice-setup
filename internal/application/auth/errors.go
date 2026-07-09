@@ -38,4 +38,7 @@ var (
 	ErrEmailAlreadyVerified    = errors.New("email already verified")
 	ErrInvalidVerificationCode = errors.New("invalid verification code")
 	ErrVerificationCodeExpired = errors.New("verification code has expired")
+
+	// Account locked
+	ErrAccountLocked = errors.New("account is locked")
 )

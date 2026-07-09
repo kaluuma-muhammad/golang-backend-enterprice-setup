@@ -54,6 +54,7 @@ type ServiceContract interface {
 
 	Logout(
 		ctx context.Context,
+		userID uuid.UUID,
 		sessionID uuid.UUID,
 	) error
 
