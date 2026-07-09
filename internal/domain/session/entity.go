@@ -13,8 +13,11 @@ type Session struct {
 	RefreshToken  string
 	UserAgent     string
 	IPAddress     net.IP
-	DeviceName    string
-	LastUsedAt    time.Time
+	DeviceID      string
+	Platform      string
+	Browser       string
+	LastSeenAt    time.Time
+	LastUsedAt    *time.Time
 	ExpiresAt     time.Time
 	RevokedAt     *time.Time
 	RevokedReason *string

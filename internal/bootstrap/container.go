@@ -4,6 +4,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/go-api/internal/application/auth"
+	"github.com/go-api/internal/application/security"
 	handlers "github.com/go-api/internal/interfaces/http/handlers"
 	"github.com/go-api/internal/interfaces/http/middleware"
 	"github.com/go-api/internal/shared/config"
@@ -11,11 +12,12 @@ import (
 )
 
 type Container struct {
-	DB             *pgxpool.Pool
-	Validator      *validator.Validator
-	AuthHandler    *handlers.AuthHandler
-	Authenticator  *auth.Authenticator
-	AuthMiddleware *middleware.AuthMiddleware
+	DB              *pgxpool.Pool
+	Validator       *validator.Validator
+	AuthHandler     *handlers.AuthHandler
+	Authenticator   *auth.Authenticator
+	AuthMiddleware  *middleware.AuthMiddleware
+	SecurityService *security.Service
 }
 
 func NewContainer(dbPool *pgxpool.Pool, cfg *config.Config) *Container {

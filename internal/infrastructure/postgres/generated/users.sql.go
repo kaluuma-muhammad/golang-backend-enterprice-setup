@@ -13,7 +13,6 @@ import (
 )
 
 const createUser = `-- name: CreateUser :exec
-
 INSERT INTO users (
     id,
     email,
@@ -21,23 +20,29 @@ INSERT INTO users (
     first_name,
     last_name,
     is_verified,
+    failed_login_attempts,
+    locked_until,
+    last_login_at,
     created_at,
     updated_at
 )
 VALUES (
-    $1,$2,$3,$4,$5,$6,$7,$8
+    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
 )
 `
 
 type CreateUserParams struct {
-	ID         uuid.UUID
-	Email      string
-	Password   string
-	FirstName  string
-	LastName   string
-	IsVerified bool
-	CreatedAt  pgtype.Timestamp
-	UpdatedAt  pgtype.Timestamp
+	ID                  uuid.UUID
+	Email               string
+	Password            string
+	FirstName           string
+	LastName            string
+	IsVerified          bool
+	FailedLoginAttempts int32
+	LockedUntil         pgtype.Timestamp
+	LastLoginAt         pgtype.Timestamp
+	CreatedAt           pgtype.Timestamp
+	UpdatedAt           pgtype.Timestamp
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
@@ -48,6 +53,9 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 		arg.FirstName,
 		arg.LastName,
 		arg.IsVerified,
+		arg.FailedLoginAttempts,
+		arg.LockedUntil,
+		arg.LastLoginAt,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -64,8 +72,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-
-SELECT id, email, password, first_name, last_name, is_verified, created_at, updated_at FROM users WHERE email = $1
+SELECT id, email, password, first_name, last_name, is_verified, failed_login_attempts, locked_until, last_login_at, created_at, updated_at FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -78,6 +85,9 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.FirstName,
 		&i.LastName,
 		&i.IsVerified,
+		&i.FailedLoginAttempts,
+		&i.LockedUntil,
+		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -85,8 +95,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByID = `-- name: GetUserByID :one
-
-SELECT id, email, password, first_name, last_name, is_verified, created_at, updated_at FROM users WHERE id = $1
+SELECT id, email, password, first_name, last_name, is_verified, failed_login_attempts, locked_until, last_login_at, created_at, updated_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -99,10 +108,94 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.FirstName,
 		&i.LastName,
 		&i.IsVerified,
+		&i.FailedLoginAttempts,
+		&i.LockedUntil,
+		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getUserSecurity = `-- name: GetUserSecurity :one
+SELECT id, failed_login_attempts, locked_until, last_login_at FROM users WHERE id = $1
+`
+
+type GetUserSecurityRow struct {
+	ID                  uuid.UUID
+	FailedLoginAttempts int32
+	LockedUntil         pgtype.Timestamp
+	LastLoginAt         pgtype.Timestamp
+}
+
+func (q *Queries) GetUserSecurity(ctx context.Context, id uuid.UUID) (GetUserSecurityRow, error) {
+	row := q.db.QueryRow(ctx, getUserSecurity, id)
+	var i GetUserSecurityRow
+	err := row.Scan(
+		&i.ID,
+		&i.FailedLoginAttempts,
+		&i.LockedUntil,
+		&i.LastLoginAt,
+	)
+	return i, err
+}
+
+const incrementFailedLoginAttempts = `-- name: IncrementFailedLoginAttempts :exec
+UPDATE users
+SET
+    failed_login_attempts = failed_login_attempts + 1,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) IncrementFailedLoginAttempts(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, incrementFailedLoginAttempts, id)
+	return err
+}
+
+const lockUserAccount = `-- name: LockUserAccount :exec
+UPDATE users
+SET
+    locked_until = $2,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+type LockUserAccountParams struct {
+	ID          uuid.UUID
+	LockedUntil pgtype.Timestamp
+}
+
+func (q *Queries) LockUserAccount(ctx context.Context, arg LockUserAccountParams) error {
+	_, err := q.db.Exec(ctx, lockUserAccount, arg.ID, arg.LockedUntil)
+	return err
+}
+
+const resetFailedLoginAttempts = `-- name: ResetFailedLoginAttempts :exec
+UPDATE users
+SET
+    failed_login_attempts = 0,
+    locked_until = NULL,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) ResetFailedLoginAttempts(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, resetFailedLoginAttempts, id)
+	return err
+}
+
+const updateLastLogin = `-- name: UpdateLastLogin :exec
+UPDATE users
+SET
+    last_login_at = NOW(),
+    updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) UpdateLastLogin(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, updateLastLogin, id)
+	return err
 }
 
 const updateUser = `-- name: UpdateUser :exec
@@ -137,7 +230,6 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
 }
 
 const updateUserPassword = `-- name: UpdateUserPassword :exec
-
 UPDATE users SET password = $2, updated_at = NOW() WHERE id = $1
 `
 
@@ -152,7 +244,6 @@ func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPassword
 }
 
 const verifyUser = `-- name: VerifyUser :exec
-
 UPDATE users SET is_verified = TRUE, updated_at = NOW() WHERE id = $1
 `
 

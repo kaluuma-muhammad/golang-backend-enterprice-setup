@@ -2,22 +2,25 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/go-api/internal/application/common"
 	"github.com/go-api/internal/domain/user"
 	db "github.com/go-api/internal/infrastructure/postgres/generated"
 	"github.com/go-api/internal/infrastructure/postgres/types"
 )
 
 type UserRepository struct {
-	q *db.Queries
+	pool *pgxpool.Pool
 }
 
-func NewUserRepository(q *db.Queries) *UserRepository {
+func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 
 	return &UserRepository{
-		q: q,
+		pool: pool,
 	}
 }
 
@@ -36,8 +39,9 @@ func toDomain(u db.User) *user.User {
 }
 
 func (r *UserRepository) Create(ctx context.Context, u *user.User) error {
+	q := common.GetQueries(ctx, r.pool)
 
-	return r.q.CreateUser(
+	return q.CreateUser(
 		ctx,
 		db.CreateUserParams{
 			ID:         u.ID,
@@ -53,8 +57,9 @@ func (r *UserRepository) Create(ctx context.Context, u *user.User) error {
 }
 
 func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
+	q := common.GetQueries(ctx, r.pool)
 
-	record, err := r.q.GetUserByID(ctx, id)
+	record, err := q.GetUserByID(ctx, id)
 
 	if err != nil {
 		return nil, err
@@ -64,8 +69,9 @@ func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*user.User
 }
 
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*user.User, error) {
+	q := common.GetQueries(ctx, r.pool)
 
-	record, err := r.q.GetUserByEmail(ctx, email)
+	record, err := q.GetUserByEmail(ctx, email)
 
 	if err != nil {
 		return nil, err
@@ -75,8 +81,9 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*user.U
 }
 
 func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
+	q := common.GetQueries(ctx, r.pool)
 
-	return r.q.UpdateUser(
+	return q.UpdateUser(
 		ctx,
 		db.UpdateUserParams{
 			ID:         u.ID,
@@ -90,19 +97,45 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 }
 
 func (r *UserRepository) Verify(ctx context.Context, id uuid.UUID) error {
-
-	return r.q.VerifyUser(ctx, id)
+	q := common.GetQueries(ctx, r.pool)
+	return q.VerifyUser(ctx, id)
 }
 
 func (r *UserRepository) UpdatePassword(ctx context.Context, id uuid.UUID, password string) error {
-
-	return r.q.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+	q := common.GetQueries(ctx, r.pool)
+	return q.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
 		ID:       id,
 		Password: password,
 	})
 }
 
-func (r *UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *UserRepository) IncrementFailedLoginAttempts(ctx context.Context, id uuid.UUID) error {
+	q := common.GetQueries(ctx, r.pool)
+	return q.IncrementFailedLoginAttempts(ctx, id)
+}
 
-	return r.q.DeleteUser(ctx, id)
+func (r *UserRepository) ResetFailedLoginAttempts(ctx context.Context, id uuid.UUID) error {
+	q := common.GetQueries(ctx, r.pool)
+	return q.ResetFailedLoginAttempts(ctx, id)
+}
+
+func (r *UserRepository) LockUserAccount(ctx context.Context, id uuid.UUID, until time.Time) error {
+	q := common.GetQueries(ctx, r.pool)
+	return q.LockUserAccount(
+		ctx,
+		db.LockUserAccountParams{
+			ID:          id,
+			LockedUntil: types.ToPGTimestamp(until),
+		},
+	)
+}
+
+func (r *UserRepository) UpdateLastLogin(ctx context.Context, id uuid.UUID) error {
+	q := common.GetQueries(ctx, r.pool)
+	return q.UpdateLastLogin(ctx, id)
+}
+
+func (r *UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	q := common.GetQueries(ctx, r.pool)
+	return q.DeleteUser(ctx, id)
 }

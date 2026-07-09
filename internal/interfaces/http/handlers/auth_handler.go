@@ -208,7 +208,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	err := h.service.Logout(c.Request.Context(), middleware.SessionID(c))
+	err := h.service.Logout(c.Request.Context(), middleware.UserID(c), middleware.SessionID(c))
 
 	if err != nil {
 		response.Error(c, response.StatusCode(err), err.Error())
