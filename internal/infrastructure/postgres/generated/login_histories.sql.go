@@ -25,10 +25,11 @@ INSERT INTO login_histories (
     failure_reason,
     login_at,
     logout_at,
-    created_at
+    created_at,
+    updated_at
 )
 VALUES (
-    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
+    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12
 )
 `
 
@@ -44,6 +45,7 @@ type CreateLoginHistoryParams struct {
 	LoginAt       pgtype.Timestamp
 	LogoutAt      pgtype.Timestamp
 	CreatedAt     pgtype.Timestamp
+	UpdatedAt     pgtype.Timestamp
 }
 
 func (q *Queries) CreateLoginHistory(ctx context.Context, arg CreateLoginHistoryParams) error {
@@ -59,6 +61,7 @@ func (q *Queries) CreateLoginHistory(ctx context.Context, arg CreateLoginHistory
 		arg.LoginAt,
 		arg.LogoutAt,
 		arg.CreatedAt,
+		arg.UpdatedAt,
 	)
 	return err
 }

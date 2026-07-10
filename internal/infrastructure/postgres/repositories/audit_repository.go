@@ -54,6 +54,7 @@ func (r *AuditRepository) Create(ctx context.Context, log *audit.Log) error {
 			UserAgent:  types.ToPGText(log.UserAgent),
 			Metadata:   log.Metadata,
 			CreatedAt:  types.ToPGTimestamp(log.CreatedAt),
+			UpdatedAt:  types.ToPGTimestamp(log.UpdatedAt),
 		},
 	)
 }

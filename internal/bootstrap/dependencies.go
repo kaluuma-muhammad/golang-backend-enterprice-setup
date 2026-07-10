@@ -67,7 +67,6 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 		sessionRepo,
 		auditRepo,
 		loginHistoryRepo,
-		tx,
 	)
 
 	authService := auth.NewService(

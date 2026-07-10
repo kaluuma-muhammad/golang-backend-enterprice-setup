@@ -23,10 +23,11 @@ INSERT INTO audit_logs (
     ip_address,
     user_agent,
     metadata,
-    created_at
+    created_at,
+    updated_at
 )
 VALUES (
-    $1,$2,$3,$4,$5,$6,$7,$8,$9
+    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
 )
 `
 
@@ -40,6 +41,7 @@ type CreateAuditLogParams struct {
 	UserAgent  pgtype.Text
 	Metadata   []byte
 	CreatedAt  pgtype.Timestamp
+	UpdatedAt  pgtype.Timestamp
 }
 
 func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) error {
@@ -53,6 +55,7 @@ func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) 
 		arg.UserAgent,
 		arg.Metadata,
 		arg.CreatedAt,
+		arg.UpdatedAt,
 	)
 	return err
 }
