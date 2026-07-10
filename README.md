@@ -492,6 +492,10 @@ SMTP_FROM=no-reply@example.com
 * Password Reset
 * Authentication Middleware
 * Email Verification Middleware
+* Device Management
+* Login History
+* Audit Logs
+* Account Lockout
 * Structured Logging
 * PostgreSQL Integration
 * SQLC Query Generation
@@ -504,13 +508,9 @@ SMTP_FROM=no-reply@example.com
 * OAuth (Google, GitHub, Microsoft)
 * Role-Based Access Control (RBAC)
 * Permission-Based Authorization
-* Device Management
-* Login History
-* Audit Logs
 * Background Workers
 * Redis Caching
 * Rate Limiting
-* Account Lockout
 * Multi-Factor Authentication (MFA)
 * Kubernetes Deployment
 * OpenTelemetry Metrics & Tracing

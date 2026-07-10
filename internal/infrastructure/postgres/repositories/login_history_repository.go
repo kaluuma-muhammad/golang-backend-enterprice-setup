@@ -37,6 +37,7 @@ func toLoginHistoryDomain(h db.LoginHistory) *loginhistory.LoginHistory {
 		LoginAt:       types.FromPGTimestamp(h.LoginAt),
 		LogoutAt:      types.FromPGTimestampPtr(h.LogoutAt),
 		CreatedAt:     types.FromPGTimestamp(h.CreatedAt),
+		UpdatedAt:     types.FromPGTimestamp(h.UpdatedAt),
 	}
 }
 
@@ -57,6 +58,7 @@ func (r *LoginHistoryRepository) Create(ctx context.Context, h *loginhistory.Log
 			LoginAt:       types.ToPGTimestamp(h.LoginAt),
 			LogoutAt:      types.ToPGTimestampPtr(h.LogoutAt),
 			CreatedAt:     types.ToPGTimestamp(h.CreatedAt),
+			UpdatedAt:     types.ToPGTimestamp(h.UpdatedAt),
 		},
 	)
 }
