@@ -56,10 +56,14 @@ type ServiceContract interface {
 		ctx context.Context,
 		userID uuid.UUID,
 		sessionID uuid.UUID,
+		ipAddress string,
+		userAgent string,
 	) error
 
 	LogoutAllSessions(
 		ctx context.Context,
 		userID uuid.UUID,
+		ipAddress string,
+		userAgent string,
 	) error
 }

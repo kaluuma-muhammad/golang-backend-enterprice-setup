@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -21,6 +22,21 @@ func NewAuthHandler(service appAuth.ServiceContract, validator *validator.Valida
 	return &AuthHandler{service: service, validator: validator}
 }
 
+func getClientIP(c *gin.Context) string {
+	ip := c.GetHeader("X-Forwarded-For")
+	if ip != "" {
+		parts := strings.Split(ip, ",")
+		return strings.TrimSpace(parts[0])
+	}
+
+	ip = c.GetHeader("X-Real-IP")
+	if ip != "" {
+		return ip
+	}
+
+	return c.ClientIP()
+}
+
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req appAuth.RegisterRequest
 
@@ -34,7 +50,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.Register(c.Request.Context(), req, c.Request.UserAgent(), c.ClientIP())
+	ip := getClientIP(c)
+	result, err := h.service.Register(c.Request.Context(), req, c.Request.UserAgent(), ip)
 
 	if err != nil {
 		response.Error(c, response.StatusCode(err), err.Error())
@@ -57,7 +74,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.Login(c.Request.Context(), req, c.Request.UserAgent(), c.ClientIP())
+	ip := getClientIP(c)
+	result, err := h.service.Login(c.Request.Context(), req, c.Request.UserAgent(), ip)
 
 	if err != nil {
 		response.Error(c, response.StatusCode(err), err.Error())
@@ -208,7 +226,8 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	err := h.service.Logout(c.Request.Context(), middleware.UserID(c), middleware.SessionID(c))
+	ip := getClientIP(c)
+	err := h.service.Logout(c.Request.Context(), middleware.UserID(c), middleware.SessionID(c), ip, c.Request.UserAgent())
 
 	if err != nil {
 		response.Error(c, response.StatusCode(err), err.Error())
@@ -220,7 +239,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 func (h *AuthHandler) LogoutAllSessions(c *gin.Context) {
 
-	err := h.service.LogoutAllSessions(c.Request.Context(), middleware.UserID(c))
+	ip := getClientIP(c)
+	err := h.service.LogoutAllSessions(c.Request.Context(), middleware.UserID(c), ip, c.Request.UserAgent())
 
 	if err != nil {
 		response.Error(c, response.StatusCode(err), err.Error())

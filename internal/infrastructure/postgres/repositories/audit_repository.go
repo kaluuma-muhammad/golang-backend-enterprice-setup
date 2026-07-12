@@ -33,7 +33,7 @@ func toAuditLogDomain(log db.AuditLog) *audit.Log {
 		EntityID:   types.FromNullableUUID(log.EntityID),
 		IPAddress:  types.FromPGInet(log.IpAddress),
 		UserAgent:  types.FromPGText(log.UserAgent),
-		Metadata:   log.Metadata,
+		Metadata:   types.FromJSONB(log.Metadata),
 		CreatedAt:  types.FromPGTimestamp(log.CreatedAt),
 		UpdatedAt:  types.FromPGTimestamp(log.UpdatedAt),
 	}
@@ -52,7 +52,7 @@ func (r *AuditRepository) Create(ctx context.Context, log *audit.Log) error {
 			EntityID:   types.ToNullableUUID(log.EntityID),
 			IpAddress:  types.ToPGInet(log.IPAddress),
 			UserAgent:  types.ToPGText(log.UserAgent),
-			Metadata:   log.Metadata,
+			Metadata:   types.ToJSONB(log.Metadata),
 			CreatedAt:  types.ToPGTimestamp(log.CreatedAt),
 			UpdatedAt:  types.ToPGTimestamp(log.UpdatedAt),
 		},

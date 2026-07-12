@@ -8,7 +8,7 @@ CREATE TABLE audit_logs (
     entity_id UUID,
     ip_address INET,
     user_agent TEXT,
-    metadata JSONB,
+    metadata json,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
 );
