@@ -38,7 +38,7 @@ func ptr[T any](v T) *T {
 	return &v
 }
 
-func (s *Service) RecordSuccessfulLogin(ctx context.Context, userID uuid.UUID, sessionID uuid.UUID, ipAddress string, userAgent string, deviceName string) error {
+func (s *Service) RecordSuccessfulLogin(ctx context.Context, userID, sessionID uuid.UUID, ipAddress, userAgent, deviceName string) error {
 	now := time.Now()
 
 	history := &loginhistory.LoginHistory{
@@ -58,6 +58,11 @@ func (s *Service) RecordSuccessfulLogin(ctx context.Context, userID uuid.UUID, s
 		return err
 	}
 
+	metadata := map[string]any{
+		"session_id": sessionID,
+		"device":     deviceName,
+	}
+
 	auditLog := &audit.Log{
 		ID:         uuid.New(),
 		UserID:     &userID,
@@ -66,6 +71,7 @@ func (s *Service) RecordSuccessfulLogin(ctx context.Context, userID uuid.UUID, s
 		EntityID:   &userID,
 		IPAddress:  net.ParseIP(ipAddress),
 		UserAgent:  userAgent,
+		Metadata:   metadata,
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
@@ -81,7 +87,7 @@ func (s *Service) RecordSuccessfulLogin(ctx context.Context, userID uuid.UUID, s
 	return s.users.UpdateLastLogin(ctx, userID)
 }
 
-func (s *Service) RecordFailedLogin(ctx context.Context, userID *uuid.UUID, ipAddress string, userAgent string, reason string) error {
+func (s *Service) RecordFailedLogin(ctx context.Context, userID *uuid.UUID, ipAddress, userAgent, reason string) error {
 	now := time.Now()
 
 	history := &loginhistory.LoginHistory{
@@ -124,17 +130,28 @@ func (s *Service) RecordFailedLogin(ctx context.Context, userID *uuid.UUID, ipAd
 	return nil
 }
 
-func (s *Service) RecordLogout(ctx context.Context, userID uuid.UUID, sessionID uuid.UUID) error {
+func (s *Service) RecordLogout(ctx context.Context, userID, sessionID uuid.UUID, ipAddress, userAgent, deviceName string) error {
 	now := time.Now()
 	if err := s.loginHistory.MarkLoginHistoryLogout(ctx, sessionID); err != nil {
 		return err
 	}
 
+	metadata := map[string]any{
+		"session_id": sessionID,
+		"device":     deviceName,
+	}
+
 	log := &audit.Log{
-		ID:        uuid.New(),
-		UserID:    &userID,
-		Action:    "USER_LOGOUT",
-		CreatedAt: now,
+		ID:         uuid.New(),
+		UserID:     &userID,
+		Action:     "USER_LOGOUT",
+		EntityType: ptr("user"),
+		EntityID:   &userID,
+		IPAddress:  net.ParseIP(ipAddress),
+		UserAgent:  userAgent,
+		Metadata:   metadata,
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
 
 	if err := s.auditLogs.Create(ctx, log); err != nil {

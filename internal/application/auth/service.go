@@ -58,32 +58,33 @@ func NewService(
 
 func parseDeviceName(userAgent string) string {
 	if userAgent == "" {
-		return "Unknown"
+		return "Unknown Device"
 	}
-	if strings.Contains(userAgent, "Android") {
+
+	ua := strings.ToLower(userAgent)
+
+	switch {
+	case strings.Contains(ua, "android"):
 		return "Android Device"
-	}
-	if strings.Contains(userAgent, "iPhone") {
+	case strings.Contains(ua, "iphone"):
 		return "iPhone"
-	}
-	if strings.Contains(userAgent, "iPad") {
+	case strings.Contains(ua, "ipad"):
 		return "iPad"
-	}
-	if strings.Contains(userAgent, "Windows") {
+	case strings.Contains(ua, "windows"):
 		return "Windows PC"
-	}
-	if strings.Contains(userAgent, "Macintosh") {
+	case strings.Contains(ua, "mac"):
 		return "Mac"
-	}
-	if strings.Contains(userAgent, "Linux") {
+	case strings.Contains(ua, "linux") || strings.Contains(ua, "x11"):
 		return "Linux PC"
+	default:
+		return "Unknown Device"
 	}
-	return "Unknown Device"
 }
 
 func (s *Service) AuthenticateUser(ctx context.Context, user *backendUser.User, userAgent, ipAddress string) (*LoginResponse, error) {
-
+	deviceInfo := ParseDeviceInfo(userAgent, ipAddress)
 	now := time.Now()
+
 	refreshToken, err := s.tokenService.CreateRefreshToken()
 	if err != nil {
 		return nil, err
@@ -95,10 +96,13 @@ func (s *Service) AuthenticateUser(ctx context.Context, user *backendUser.User, 
 		RefreshToken: refreshToken.TokenHash,
 		UserAgent:    userAgent,
 		IPAddress:    net.ParseIP(ipAddress),
+		DeviceID:     deviceInfo.DeviceID,
+		Platform:     deviceInfo.Platform,
+		Browser:      deviceInfo.Browser,
 		LastUsedAt:   &now,
 		ExpiresAt:    refreshToken.ExpiresAt,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 
 	err = s.sessions.Create(ctx, session)
@@ -127,7 +131,7 @@ func (s *Service) AuthenticateUser(ctx context.Context, user *backendUser.User, 
 		session.ID,
 		ipAddress,
 		userAgent,
-		parseDeviceName(userAgent),
+		deviceInfo.DeviceName,
 	)
 
 	if err != nil {
@@ -498,9 +502,8 @@ func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (*LoginRespon
 	return response, nil
 }
 
-func (s *Service) Logout(ctx context.Context, userID, sessionID uuid.UUID) error {
+func (s *Service) Logout(ctx context.Context, userID, sessionID uuid.UUID, ipAddress, userAgent string) error {
 	err := s.tx.Execute(ctx, func(txCtx context.Context) error {
-
 		err := s.sessions.RevokeSession(
 			txCtx,
 			sessionID,
@@ -515,7 +518,15 @@ func (s *Service) Logout(ctx context.Context, userID, sessionID uuid.UUID) error
 			return ErrInvalidRefreshToken
 		}
 
-		err = s.security.RecordLogout(txCtx, userID, sessionID)
+		deviceInfo := ParseDeviceInfo(userAgent, ipAddress)
+		err = s.security.RecordLogout(
+			txCtx,
+			userID,
+			sessionID,
+			ipAddress,
+			userAgent,
+			deviceInfo.DeviceName,
+		)
 		if err != nil {
 			return ErrInvalidRefreshToken
 		}
@@ -526,17 +537,34 @@ func (s *Service) Logout(ctx context.Context, userID, sessionID uuid.UUID) error
 	return err
 }
 
-func (s *Service) LogoutAllSessions(ctx context.Context, userID uuid.UUID) error {
+func (s *Service) LogoutAllSessions(ctx context.Context, userID uuid.UUID, ipAddress, userAgent string) error {
 	err := s.tx.Execute(ctx, func(txCtx context.Context) error {
-		err := s.sessions.RevokeAllSessions(
+		activeSessions, err := s.sessions.GetSessionsByUserID(txCtx, userID)
+		if err != nil {
+			return err
+		}
+
+		revokeErr := s.sessions.RevokeAllSessions(
 			txCtx,
 			userID,
 			backendSession.RevokedByLogoutAll,
 		)
-
-		if err != nil {
+		if revokeErr != nil {
 			return ErrInvalidRefreshToken
 		}
+
+		for _, session := range activeSessions {
+			err = s.sessions.UpdateSessionActivity(txCtx, session.ID)
+			if err != nil {
+				return err
+			}
+
+			err = s.security.RecordLogout(txCtx, session.UserID, session.ID, ipAddress, userAgent, parseDeviceName(userAgent))
+			if err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 

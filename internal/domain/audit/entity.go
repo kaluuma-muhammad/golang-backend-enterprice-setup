@@ -15,7 +15,7 @@ type Log struct {
 	EntityID   *uuid.UUID
 	IPAddress  net.IP
 	UserAgent  string
-	Metadata   []byte
+	Metadata   map[string]any
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
