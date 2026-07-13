@@ -1,5 +1,7 @@
 package auth
 
+import "github.com/go-api/internal/application/user"
+
 type RegisterRequest struct {
 	Email     string `json:"email" validate:"required,email"`
 	Password  string `json:"password" validate:"required,min=8"`
@@ -39,10 +41,10 @@ type RefreshRequest struct {
 }
 
 type LoginResponse struct {
-	User         UserResponse `json:"user"`
-	AccessToken  string       `json:"access_token"`
-	RefreshToken string       `json:"refresh_token"`
-	ExpiresIn    int          `json:"expires_in"`
+	User         *user.UserResponse `json:"user"`
+	AccessToken  string             `json:"access_token"`
+	RefreshToken string             `json:"refresh_token"`
+	ExpiresIn    int                `json:"expires_in"`
 }
 
 type VerifyResetCodeResponse struct {

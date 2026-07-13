@@ -151,7 +151,7 @@ Authentication is implemented using:
 
 Passwords are hashed using:
 
-* bcrypt
+* argon2 package
 
 Refresh tokens and verification tokens are hashed using:
 

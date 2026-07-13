@@ -32,6 +32,8 @@ func toDomain(u db.User) *user.User {
 		Password:   u.Password,
 		FirstName:  u.FirstName,
 		LastName:   u.LastName,
+		Phone:      types.FromNullablePGText(u.Phone),
+		ImageURL:   types.FromNullablePGText(u.ImageUrl),
 		IsVerified: u.IsVerified,
 		CreatedAt:  types.FromPGTimestamp(u.CreatedAt),
 		UpdatedAt:  types.FromPGTimestamp(u.UpdatedAt),
@@ -80,18 +82,29 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*user.U
 	return toDomain(record), nil
 }
 
-func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
+func (r *UserRepository) UpdateUserAccount(ctx context.Context, u *user.User) error {
 	q := common.GetQueries(ctx, r.pool)
 
-	return q.UpdateUser(
+	return q.UpdateUserAccount(
 		ctx,
-		db.UpdateUserParams{
-			ID:         u.ID,
-			Email:      u.Email,
-			FirstName:  u.FirstName,
-			LastName:   u.LastName,
-			IsVerified: u.IsVerified,
-			UpdatedAt:  types.ToPGTimestamp(u.UpdatedAt),
+		db.UpdateUserAccountParams{
+			ID:        u.ID,
+			Email:     u.Email,
+			FirstName: u.FirstName,
+			LastName:  u.LastName,
+			Phone:     types.ToNullablePGText(u.Phone),
+		},
+	)
+}
+
+func (r *UserRepository) UpdateUserAvatar(ctx context.Context, u *user.User) error {
+	q := common.GetQueries(ctx, r.pool)
+
+	return q.UpdateUserAvatar(
+		ctx,
+		db.UpdateUserAvatarParams{
+			ID:       u.ID,
+			ImageUrl: types.ToNullablePGText(u.ImageURL),
 		},
 	)
 }

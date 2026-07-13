@@ -7,9 +7,11 @@ import (
 	"github.com/go-api/internal/application/common"
 	"github.com/go-api/internal/application/security"
 	"github.com/go-api/internal/application/token"
+	"github.com/go-api/internal/application/user"
 	"github.com/go-api/internal/infrastructure/email"
 	"github.com/go-api/internal/infrastructure/jwt"
 	repositories "github.com/go-api/internal/infrastructure/postgres/repositories"
+	"github.com/go-api/internal/infrastructure/storage"
 	handlers "github.com/go-api/internal/interfaces/http/handlers"
 	"github.com/go-api/internal/interfaces/http/middleware"
 	"github.com/go-api/internal/shared/config"
@@ -48,18 +50,13 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 
 	// Application Services
 	emailService := email.New(cfg, provider, renderer)
+	tokenService := token.NewService(tokenRepository, generator, &cfg.JWT)
+	passwordService := security.NewPasswordService()
+	authenticator := auth.NewAuthenticator(userRepo, sessionRepo, jwtManager)
 
-	tokenService := token.NewService(
-		tokenRepository,
-		generator,
-		&cfg.JWT,
-	)
-	passwordService := auth.NewPasswordService()
-
-	authenticator := auth.NewAuthenticator(
-		userRepo,
-		sessionRepo,
-		jwtManager,
+	storageService := storage.NewLocalStorage(
+		"./storage/images",
+		cfg.App.BaseURL+"/storage/images",
 	)
 
 	securityService := security.NewService(
@@ -79,6 +76,17 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 		jwtManager,
 		securityService,
 		tx,
+		cfg.App.BaseURL,
+	)
+
+	userService := user.NewService(
+		userRepo,
+		tx,
+		passwordService,
+		emailService,
+		tokenService,
+		storageService,
+		cfg.App.BaseURL,
 	)
 
 	// HTTP Handlers
@@ -86,5 +94,6 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 	container.Authenticator = authenticator
 	container.AuthMiddleware = middleware.NewAuthMiddleware(authenticator)
 	container.SecurityService = securityService
+	container.UserHandler = handlers.NewUserHandler(userService, securityService, container.Validator)
 
 }

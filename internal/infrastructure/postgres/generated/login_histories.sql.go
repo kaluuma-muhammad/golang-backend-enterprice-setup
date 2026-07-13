@@ -13,6 +13,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countLoginHistoryByUser = `-- name: CountLoginHistoryByUser :one
+SELECT COUNT(*) FROM login_histories WHERE user_id = $1
+`
+
+func (q *Queries) CountLoginHistoryByUser(ctx context.Context, userID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countLoginHistoryByUser, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createLoginHistory = `-- name: CreateLoginHistory :exec
 INSERT INTO login_histories (
     id,
@@ -96,6 +107,49 @@ SELECT id, user_id, session_id, status, ip_address, user_agent, device_name, fai
 
 func (q *Queries) GetLoginHistoryByUser(ctx context.Context, userID pgtype.UUID) ([]LoginHistory, error) {
 	rows, err := q.db.Query(ctx, getLoginHistoryByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LoginHistory
+	for rows.Next() {
+		var i LoginHistory
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.SessionID,
+			&i.Status,
+			&i.IpAddress,
+			&i.UserAgent,
+			&i.DeviceName,
+			&i.FailureReason,
+			&i.LoginAt,
+			&i.LogoutAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLoginHistoryByUserPaginated = `-- name: GetLoginHistoryByUserPaginated :many
+SELECT id, user_id, session_id, status, ip_address, user_agent, device_name, failure_reason, login_at, logout_at, created_at, updated_at FROM login_histories WHERE user_id = $1 ORDER BY login_at DESC LIMIT $2 OFFSET $3
+`
+
+type GetLoginHistoryByUserPaginatedParams struct {
+	UserID pgtype.UUID
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) GetLoginHistoryByUserPaginated(ctx context.Context, arg GetLoginHistoryByUserPaginatedParams) ([]LoginHistory, error) {
+	rows, err := q.db.Query(ctx, getLoginHistoryByUserPaginated, arg.UserID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

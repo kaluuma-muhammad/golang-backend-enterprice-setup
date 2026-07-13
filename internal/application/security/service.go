@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/go-api/internal/application/common"
 	"github.com/go-api/internal/domain/audit"
 	"github.com/go-api/internal/domain/loginhistory"
 	"github.com/go-api/internal/domain/session"
@@ -170,4 +171,115 @@ func (s *Service) LockAccount(ctx context.Context, userID uuid.UUID) error {
 	unlockDuration := time.Now().Add(15 * time.Minute)
 
 	return s.users.LockUserAccount(ctx, userID, unlockDuration)
+}
+
+func (s *Service) GetAuditLogs(ctx context.Context, userID uuid.UUID, req common.PaginationRequest) ([]AuditLogResponse, common.PaginationResponse, error) {
+
+	req = req.Normalize()
+
+	logs, total, err := s.auditLogs.GetByUserPaginated(ctx, userID, req.PageSize, req.Offset())
+	if err != nil {
+		return nil, common.PaginationResponse{}, err
+	}
+
+	var response []AuditLogResponse
+	for _, l := range logs {
+		response = append(response, AuditLogResponse{
+			ID:         l.ID,
+			Action:     l.Action,
+			EntityType: l.EntityType,
+			CreatedAt:  l.CreatedAt,
+		})
+	}
+
+	pagination := common.PaginationResponse{
+		Page:       req.Page,
+		PageSize:   req.PageSize,
+		Total:      total,
+		TotalPages: int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
+	}
+
+	return response, pagination, nil
+}
+
+func (s *Service) GetLoginHistory(ctx context.Context, userID uuid.UUID, req common.PaginationRequest) ([]LoginHistoryResponse, common.PaginationResponse, error) {
+
+	req = req.Normalize()
+
+	data, total, err := s.loginHistory.GetByUserPaginated(ctx, userID, req.PageSize, req.Offset())
+	if err != nil {
+		return nil, common.PaginationResponse{}, err
+	}
+
+	var response []LoginHistoryResponse
+	for _, d := range data {
+		response = append(response, LoginHistoryResponse{
+			ID:         d.ID,
+			Status:     string(d.Status),
+			IPAddress:  d.IPAddress.String(),
+			DeviceName: d.DeviceName,
+			LoginAt:    d.LoginAt,
+			LogoutAt:   d.LogoutAt,
+		})
+	}
+
+	pagination := common.PaginationResponse{
+		Page:       req.Page,
+		PageSize:   req.PageSize,
+		Total:      total,
+		TotalPages: int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
+	}
+
+	return response, pagination, nil
+}
+
+func (s *Service) GetUserSessions(ctx context.Context, userID uuid.UUID, req common.PaginationRequest) ([]SessionResponse, common.PaginationResponse, error) {
+
+	req = req.Normalize()
+
+	data, total, err := s.sessions.GetSessionsByUserPaginated(ctx, userID, req.PageSize, req.Offset())
+	if err != nil {
+		return nil, common.PaginationResponse{}, err
+	}
+
+	var response []SessionResponse
+	for _, d := range data {
+		response = append(response, SessionResponse{
+			ID:         d.ID,
+			Platform:   d.Platform,
+			Browser:    d.Browser,
+			LastUsedAt: d.LastUsedAt,
+			ExpiresAt:  d.ExpiresAt,
+		})
+	}
+
+	pagination := common.PaginationResponse{
+		Page:       req.Page,
+		PageSize:   req.PageSize,
+		Total:      total,
+		TotalPages: int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
+	}
+
+	return response, pagination, nil
+}
+
+func (s *Service) GetCurrentSessions(ctx context.Context, userID uuid.UUID) ([]SessionResponse, error) {
+
+	sessions, err := s.sessions.GetCurrentSessions(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var response []SessionResponse
+	for _, s := range sessions {
+		response = append(response, SessionResponse{
+			ID:         s.ID,
+			Platform:   s.Platform,
+			Browser:    s.Browser,
+			LastUsedAt: s.LastUsedAt,
+			ExpiresAt:  s.ExpiresAt,
+		})
+	}
+
+	return response, nil
 }

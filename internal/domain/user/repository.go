@@ -23,7 +23,12 @@ type Repository interface {
 		email string,
 	) (*User, error)
 
-	Update(
+	UpdateUserAccount(
+		ctx context.Context,
+		user *User,
+	) error
+
+	UpdateUserAvatar(
 		ctx context.Context,
 		user *User,
 	) error

@@ -163,10 +163,12 @@ type Token struct {
 type User struct {
 	ID                  uuid.UUID
 	Email               string
-	Password            string
 	FirstName           string
 	LastName            string
+	Phone               pgtype.Text
+	ImageUrl            pgtype.Text
 	IsVerified          bool
+	Password            string
 	FailedLoginAttempts int32
 	LockedUntil         pgtype.Timestamp
 	LastLoginAt         pgtype.Timestamp

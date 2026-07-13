@@ -8,8 +8,9 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Name string
-	Port string
+	Name    string
+	Port    string
+	BaseURL string
 }
 
 type DBConfig struct {

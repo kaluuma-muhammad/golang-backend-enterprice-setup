@@ -15,6 +15,7 @@ func main() {
 	}
 
 	router := routes.SetupRouter(app.Logger, app.Container)
+	router.Static("/storage", "./storage")
 
 	app.Logger.Info("application started")
 

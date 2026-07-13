@@ -13,6 +13,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countAuditLogsByUser = `-- name: CountAuditLogsByUser :one
+SELECT COUNT(*) FROM audit_logs WHERE user_id = $1
+`
+
+func (q *Queries) CountAuditLogsByUser(ctx context.Context, userID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countAuditLogsByUser, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createAuditLog = `-- name: CreateAuditLog :exec
 INSERT INTO audit_logs (
     id,
@@ -123,6 +134,47 @@ SELECT id, user_id, action, entity_type, entity_id, ip_address, user_agent, meta
 
 func (q *Queries) GetAuditLogsByUser(ctx context.Context, userID pgtype.UUID) ([]AuditLog, error) {
 	rows, err := q.db.Query(ctx, getAuditLogsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AuditLog
+	for rows.Next() {
+		var i AuditLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Action,
+			&i.EntityType,
+			&i.EntityID,
+			&i.IpAddress,
+			&i.UserAgent,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAuditLogsByUserPaginated = `-- name: GetAuditLogsByUserPaginated :many
+SELECT id, user_id, action, entity_type, entity_id, ip_address, user_agent, metadata, created_at, updated_at FROM audit_logs WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3
+`
+
+type GetAuditLogsByUserPaginatedParams struct {
+	UserID pgtype.UUID
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) GetAuditLogsByUserPaginated(ctx context.Context, arg GetAuditLogsByUserPaginatedParams) ([]AuditLog, error) {
+	rows, err := q.db.Query(ctx, getAuditLogsByUserPaginated, arg.UserID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
