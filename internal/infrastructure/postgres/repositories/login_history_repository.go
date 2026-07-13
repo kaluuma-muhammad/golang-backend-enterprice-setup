@@ -77,6 +77,31 @@ func (r *LoginHistoryRepository) GetLoginHistoryByUser(ctx context.Context, user
 	return histories, nil
 }
 
+func (r *LoginHistoryRepository) GetByUserPaginated(ctx context.Context, userID uuid.UUID, limit int, offset int) ([]*loginhistory.LoginHistory, int64, error) {
+	q := common.GetQueries(ctx, r.pool)
+
+	records, err := q.GetLoginHistoryByUserPaginated(ctx, db.GetLoginHistoryByUserPaginatedParams{
+		UserID: types.ToNullableUUID(&userID),
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	total, err := q.CountLoginHistoryByUser(ctx, types.ToNullableUUID(&userID))
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var result []*loginhistory.LoginHistory
+	for _, r := range records {
+		result = append(result, toLoginHistoryDomain(r))
+	}
+
+	return result, total, nil
+}
+
 func (r *LoginHistoryRepository) GetLatestSuccessfulLogin(ctx context.Context, userID uuid.UUID) (*loginhistory.LoginHistory, error) {
 	q := common.GetQueries(ctx, r.pool)
 

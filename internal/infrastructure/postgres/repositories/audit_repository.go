@@ -94,6 +94,32 @@ func (r *AuditRepository) GetAllLogs(ctx context.Context) ([]*audit.Log, error) 
 	return result, nil
 }
 
+func (r *AuditRepository) GetByUserPaginated(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*audit.Log, int64, error) {
+
+	q := common.GetQueries(ctx, r.pool)
+
+	records, err := q.GetAuditLogsByUserPaginated(ctx, db.GetAuditLogsByUserPaginatedParams{
+		UserID: types.ToNullableUUID(&userID),
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	total, err := q.CountAuditLogsByUser(ctx, types.ToNullableUUID(&userID))
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var result []*audit.Log
+	for _, r := range records {
+		result = append(result, toAuditLogDomain(r))
+	}
+
+	return result, total, nil
+}
+
 func (r *AuditRepository) GetUserLogs(ctx context.Context, userID uuid.UUID) ([]*audit.Log, error) {
 	q := common.GetQueries(ctx, r.pool)
 

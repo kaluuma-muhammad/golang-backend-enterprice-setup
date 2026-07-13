@@ -12,6 +12,8 @@ type User struct {
 	Password            string
 	FirstName           string
 	LastName            string
+	Phone               *string
+	ImageURL            *string
 	IsVerified          bool
 	FailedLoginAttempts int
 	LockedUntil         *time.Time

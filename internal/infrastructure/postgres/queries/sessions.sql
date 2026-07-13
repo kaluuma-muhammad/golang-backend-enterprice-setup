@@ -20,6 +20,16 @@ VALUES (
     $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15
 );
 
+-- name: GetSessionsByUserPaginated :many
+SELECT * FROM sessions WHERE user_id = $1 AND revoked_at IS NULL ORDER BY last_seen_at DESC LIMIT $2 OFFSET $3;
+
+-- name: CountSessionsByUser :one
+SELECT COUNT(*) FROM sessions WHERE user_id = $1 AND revoked_at IS NULL;
+
+-- name: GetCurrentSessions :many
+SELECT * FROM sessions WHERE user_id = $1 AND revoked_at IS NULL ORDER BY last_seen_at DESC;
+
+
 -- name: GetSessionsByUserID :many
 SELECT * FROM sessions WHERE user_id = $1 AND revoked_at IS NULL ORDER BY last_seen_at DESC;
 

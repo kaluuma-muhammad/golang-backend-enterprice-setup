@@ -25,4 +25,11 @@ type Repository interface {
 		ctx context.Context,
 		id uuid.UUID,
 	) (*Log, error)
+
+	GetByUserPaginated(
+		ctx context.Context,
+		userID uuid.UUID,
+		limit int,
+		offset int,
+	) ([]*Log, int64, error)
 }

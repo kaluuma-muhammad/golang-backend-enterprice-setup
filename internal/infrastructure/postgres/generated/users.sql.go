@@ -72,7 +72,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password, first_name, last_name, is_verified, failed_login_attempts, locked_until, last_login_at, created_at, updated_at FROM users WHERE email = $1
+SELECT id, email, first_name, last_name, phone, image_url, is_verified, password, failed_login_attempts, locked_until, last_login_at, created_at, updated_at FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -81,10 +81,12 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
-		&i.Password,
 		&i.FirstName,
 		&i.LastName,
+		&i.Phone,
+		&i.ImageUrl,
 		&i.IsVerified,
+		&i.Password,
 		&i.FailedLoginAttempts,
 		&i.LockedUntil,
 		&i.LastLoginAt,
@@ -95,7 +97,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password, first_name, last_name, is_verified, failed_login_attempts, locked_until, last_login_at, created_at, updated_at FROM users WHERE id = $1
+SELECT id, email, first_name, last_name, phone, image_url, is_verified, password, failed_login_attempts, locked_until, last_login_at, created_at, updated_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -104,10 +106,12 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
-		&i.Password,
 		&i.FirstName,
 		&i.LastName,
+		&i.Phone,
+		&i.ImageUrl,
 		&i.IsVerified,
+		&i.Password,
 		&i.FailedLoginAttempts,
 		&i.LockedUntil,
 		&i.LastLoginAt,
@@ -141,11 +145,7 @@ func (q *Queries) GetUserSecurity(ctx context.Context, id uuid.UUID) (GetUserSec
 }
 
 const incrementFailedLoginAttempts = `-- name: IncrementFailedLoginAttempts :exec
-UPDATE users
-SET
-    failed_login_attempts = failed_login_attempts + 1,
-    updated_at = NOW()
-WHERE id = $1
+UPDATE users SET failed_login_attempts = failed_login_attempts + 1, updated_at = NOW() WHERE id = $1
 `
 
 func (q *Queries) IncrementFailedLoginAttempts(ctx context.Context, id uuid.UUID) error {
@@ -154,11 +154,7 @@ func (q *Queries) IncrementFailedLoginAttempts(ctx context.Context, id uuid.UUID
 }
 
 const lockUserAccount = `-- name: LockUserAccount :exec
-UPDATE users
-SET
-    locked_until = $2,
-    updated_at = NOW()
-WHERE id = $1
+UPDATE users SET locked_until = $2, updated_at = NOW() WHERE id = $1
 `
 
 type LockUserAccountParams struct {
@@ -172,12 +168,7 @@ func (q *Queries) LockUserAccount(ctx context.Context, arg LockUserAccountParams
 }
 
 const resetFailedLoginAttempts = `-- name: ResetFailedLoginAttempts :exec
-UPDATE users
-SET
-    failed_login_attempts = 0,
-    locked_until = NULL,
-    updated_at = NOW()
-WHERE id = $1
+UPDATE users SET failed_login_attempts = 0, locked_until = NULL, updated_at = NOW() WHERE id = $1
 `
 
 func (q *Queries) ResetFailedLoginAttempts(ctx context.Context, id uuid.UUID) error {
@@ -186,11 +177,7 @@ func (q *Queries) ResetFailedLoginAttempts(ctx context.Context, id uuid.UUID) er
 }
 
 const updateLastLogin = `-- name: UpdateLastLogin :exec
-UPDATE users
-SET
-    last_login_at = NOW(),
-    updated_at = NOW()
-WHERE id = $1
+UPDATE users SET last_login_at = NOW(), updated_at = NOW() WHERE id = $1
 `
 
 func (q *Queries) UpdateLastLogin(ctx context.Context, id uuid.UUID) error {
@@ -198,34 +185,40 @@ func (q *Queries) UpdateLastLogin(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-const updateUser = `-- name: UpdateUser :exec
-UPDATE users
-SET email = $2,
-    first_name = $3,
-    last_name = $4,
-    is_verified = $5,
-    updated_at = $6
-WHERE id = $1
+const updateUserAccount = `-- name: UpdateUserAccount :exec
+UPDATE users SET email = $2, first_name = $3, last_name = $4, phone = $5, updated_at = NOW() WHERE id = $1
 `
 
-type UpdateUserParams struct {
-	ID         uuid.UUID
-	Email      string
-	FirstName  string
-	LastName   string
-	IsVerified bool
-	UpdatedAt  pgtype.Timestamp
+type UpdateUserAccountParams struct {
+	ID        uuid.UUID
+	Email     string
+	FirstName string
+	LastName  string
+	Phone     pgtype.Text
 }
 
-func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
-	_, err := q.db.Exec(ctx, updateUser,
+func (q *Queries) UpdateUserAccount(ctx context.Context, arg UpdateUserAccountParams) error {
+	_, err := q.db.Exec(ctx, updateUserAccount,
 		arg.ID,
 		arg.Email,
 		arg.FirstName,
 		arg.LastName,
-		arg.IsVerified,
-		arg.UpdatedAt,
+		arg.Phone,
 	)
+	return err
+}
+
+const updateUserAvatar = `-- name: UpdateUserAvatar :exec
+UPDATE users SET image_url = $2, updated_at = NOW() WHERE id = $1
+`
+
+type UpdateUserAvatarParams struct {
+	ID       uuid.UUID
+	ImageUrl pgtype.Text
+}
+
+func (q *Queries) UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error {
+	_, err := q.db.Exec(ctx, updateUserAvatar, arg.ID, arg.ImageUrl)
 	return err
 }
 

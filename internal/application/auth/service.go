@@ -9,6 +9,7 @@ import (
 	"github.com/go-api/internal/application/common"
 	"github.com/go-api/internal/application/security"
 	applicationToken "github.com/go-api/internal/application/token"
+	userResponse "github.com/go-api/internal/application/user"
 	backendSession "github.com/go-api/internal/domain/session"
 	domainToken "github.com/go-api/internal/domain/token"
 	backendUser "github.com/go-api/internal/domain/user"
@@ -23,24 +24,26 @@ type Service struct {
 	cfg          *config.JWTConfig
 	users        backendUser.Repository
 	sessions     backendSession.Repository
-	password     *PasswordService
+	password     *security.PasswordService
 	tokenService *applicationToken.Service
 	emailService *email.Service
 	jwtManager   *jwt.Manager
 	security     *security.Service
 	tx           common.TransactionManager
+	baseURL      string
 }
 
 func NewService(
 	cfg *config.Config,
 	users backendUser.Repository,
 	sessions backendSession.Repository,
-	password *PasswordService,
+	password *security.PasswordService,
 	tokenService *applicationToken.Service,
 	emailService *email.Service,
 	jwtManager *jwt.Manager,
 	security *security.Service,
 	tx common.TransactionManager,
+	baseURL string,
 ) *Service {
 
 	return &Service{
@@ -53,6 +56,7 @@ func NewService(
 		jwtManager:   jwtManager,
 		security:     security,
 		tx:           tx,
+		baseURL:      baseURL,
 	}
 }
 
@@ -139,7 +143,7 @@ func (s *Service) AuthenticateUser(ctx context.Context, user *backendUser.User, 
 	}
 
 	return &LoginResponse{
-		User:         NewUserResponse(user),
+		User:         userResponse.NewUserResponse(user, s.baseURL),
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken.Token,
 		ExpiresIn:    int(s.cfg.AccessTokenMinutes),
@@ -487,7 +491,7 @@ func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (*LoginRespon
 		}
 
 		response = &LoginResponse{
-			User:         NewUserResponse(user),
+			User:         userResponse.NewUserResponse(user, s.baseURL),
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken.Token,
 			ExpiresIn:    s.cfg.AccessTokenMinutes,

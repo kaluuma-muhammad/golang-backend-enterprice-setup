@@ -17,6 +17,12 @@ VALUES (
     $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12
 );
 
+-- name: GetLoginHistoryByUserPaginated :many
+SELECT * FROM login_histories WHERE user_id = $1 ORDER BY login_at DESC LIMIT $2 OFFSET $3;
+
+-- name: CountLoginHistoryByUser :one
+SELECT COUNT(*) FROM login_histories WHERE user_id = $1;
+
 -- name: GetLoginHistoryByUser :many
 SELECT * FROM login_histories WHERE user_id = $1 ORDER BY login_at DESC;
 

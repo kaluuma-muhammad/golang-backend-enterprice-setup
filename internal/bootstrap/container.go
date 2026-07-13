@@ -15,6 +15,7 @@ type Container struct {
 	DB              *pgxpool.Pool
 	Validator       *validator.Validator
 	AuthHandler     *handlers.AuthHandler
+	UserHandler     *handlers.UserHandler
 	Authenticator   *auth.Authenticator
 	AuthMiddleware  *middleware.AuthMiddleware
 	SecurityService *security.Service

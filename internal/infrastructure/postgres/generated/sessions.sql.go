@@ -13,6 +13,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countSessionsByUser = `-- name: CountSessionsByUser :one
+SELECT COUNT(*) FROM sessions WHERE user_id = $1 AND revoked_at IS NULL
+`
+
+func (q *Queries) CountSessionsByUser(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countSessionsByUser, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createSession = `-- name: CreateSession :exec
 INSERT INTO sessions (
     id,
@@ -93,6 +104,46 @@ func (q *Queries) DeleteSessionsByUserID(ctx context.Context, userID uuid.UUID) 
 	return err
 }
 
+const getCurrentSessions = `-- name: GetCurrentSessions :many
+SELECT id, user_id, refresh_token, user_agent, ip_address, device_id, platform, browser, last_seen_at, last_used_at, expires_at, revoked_at, revoked_reason, created_at, updated_at FROM sessions WHERE user_id = $1 AND revoked_at IS NULL ORDER BY last_seen_at DESC
+`
+
+func (q *Queries) GetCurrentSessions(ctx context.Context, userID uuid.UUID) ([]Session, error) {
+	rows, err := q.db.Query(ctx, getCurrentSessions, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Session
+	for rows.Next() {
+		var i Session
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.RefreshToken,
+			&i.UserAgent,
+			&i.IpAddress,
+			&i.DeviceID,
+			&i.Platform,
+			&i.Browser,
+			&i.LastSeenAt,
+			&i.LastUsedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.RevokedReason,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSessionByID = `-- name: GetSessionByID :one
 SELECT id, user_id, refresh_token, user_agent, ip_address, device_id, platform, browser, last_seen_at, last_used_at, expires_at, revoked_at, revoked_reason, created_at, updated_at FROM sessions WHERE id = $1
 `
@@ -153,6 +204,52 @@ SELECT id, user_id, refresh_token, user_agent, ip_address, device_id, platform, 
 
 func (q *Queries) GetSessionsByUserID(ctx context.Context, userID uuid.UUID) ([]Session, error) {
 	rows, err := q.db.Query(ctx, getSessionsByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Session
+	for rows.Next() {
+		var i Session
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.RefreshToken,
+			&i.UserAgent,
+			&i.IpAddress,
+			&i.DeviceID,
+			&i.Platform,
+			&i.Browser,
+			&i.LastSeenAt,
+			&i.LastUsedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.RevokedReason,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSessionsByUserPaginated = `-- name: GetSessionsByUserPaginated :many
+SELECT id, user_id, refresh_token, user_agent, ip_address, device_id, platform, browser, last_seen_at, last_used_at, expires_at, revoked_at, revoked_reason, created_at, updated_at FROM sessions WHERE user_id = $1 AND revoked_at IS NULL ORDER BY last_seen_at DESC LIMIT $2 OFFSET $3
+`
+
+type GetSessionsByUserPaginatedParams struct {
+	UserID uuid.UUID
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) GetSessionsByUserPaginated(ctx context.Context, arg GetSessionsByUserPaginatedParams) ([]Session, error) {
+	rows, err := q.db.Query(ctx, getSessionsByUserPaginated, arg.UserID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

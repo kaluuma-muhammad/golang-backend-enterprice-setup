@@ -68,6 +68,47 @@ func (r *SessionRepository) Create(ctx context.Context, s *session.Session) erro
 	)
 }
 
+func (r *SessionRepository) GetSessionsByUserPaginated(ctx context.Context, userID uuid.UUID, limit int, offset int) ([]*session.Session, int64, error) {
+	q := common.GetQueries(ctx, r.pool)
+
+	records, err := q.GetSessionsByUserPaginated(ctx, db.GetSessionsByUserPaginatedParams{
+		UserID: userID,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	total, err := q.CountSessionsByUser(ctx, userID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var sessions []*session.Session
+	for _, record := range records {
+		sessions = append(sessions, toSessionDomain(record))
+	}
+
+	return sessions, total, nil
+}
+
+func (r *SessionRepository) GetCurrentSessions(ctx context.Context, userID uuid.UUID) ([]*session.Session, error) {
+	q := common.GetQueries(ctx, r.pool)
+
+	records, err := q.GetCurrentSessions(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var sessions []*session.Session
+	for _, record := range records {
+		sessions = append(sessions, toSessionDomain(record))
+	}
+
+	return sessions, nil
+}
+
 func (r *SessionRepository) FindByID(ctx context.Context, id uuid.UUID) (*session.Session, error) {
 	q := common.GetQueries(ctx, r.pool)
 

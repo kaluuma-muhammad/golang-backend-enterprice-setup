@@ -18,6 +18,18 @@ type Repository interface {
 		token string,
 	) (*Session, error)
 
+	GetSessionsByUserPaginated(
+		ctx context.Context,
+		userID uuid.UUID,
+		limit int,
+		offset int,
+	) ([]*Session, int64, error)
+
+	GetCurrentSessions(
+		ctx context.Context,
+		userID uuid.UUID,
+	) ([]*Session, error)
+
 	FindByID(
 		ctx context.Context,
 		id uuid.UUID,

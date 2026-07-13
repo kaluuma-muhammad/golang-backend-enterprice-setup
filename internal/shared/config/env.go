@@ -19,8 +19,9 @@ func Load() (*Config, error) {
 
 	cfg := &Config{
 		App: AppConfig{
-			Name: os.Getenv("APP_NAME"),
-			Port: os.Getenv("APP_PORT"),
+			Name:    os.Getenv("APP_NAME"),
+			Port:    os.Getenv("APP_PORT"),
+			BaseURL: os.Getenv("APP_BASE_URL"),
 		},
 		DB: DBConfig{
 			Host:     os.Getenv("DB_HOST"),

@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type ServiceContract interface {
+type AuthServiceContract interface {
 	Register(
 		ctx context.Context,
 		req RegisterRequest,
