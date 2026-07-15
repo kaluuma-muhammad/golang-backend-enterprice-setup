@@ -25,6 +25,7 @@ func SetupRouter(logger *zap.Logger, container *bootstrap.Container) *gin.Engine
 	v1 := router.Group("/api/v1")
 	{
 		public := v1.Group("")
+		public.Use(container.RateLimitMiddleware.Handler("public"))
 		{
 			public.GET("/health", healthHandler.Health)
 
@@ -42,7 +43,10 @@ func SetupRouter(logger *zap.Logger, container *bootstrap.Container) *gin.Engine
 
 		protected := v1.Group("")
 		{
-			protected.Use(container.AuthMiddleware.RequireAuth())
+			protected.Use(
+				container.AuthMiddleware.RequireAuth(),
+				container.RateLimitMiddleware.Handler("protected"),
+			)
 
 			protected.POST("/auth/activate-account", container.AuthHandler.ActivateAccount)
 			protected.POST("/auth/logout", container.AuthHandler.Logout)
@@ -51,7 +55,11 @@ func SetupRouter(logger *zap.Logger, container *bootstrap.Container) *gin.Engine
 
 		verified := v1.Group("")
 		{
-			verified.Use(container.AuthMiddleware.RequireAuth(), middleware.RequireVerified())
+			verified.Use(
+				container.AuthMiddleware.RequireAuth(),
+				middleware.RequireVerified(),
+				container.RateLimitMiddleware.Handler("verified"),
+			)
 
 			user := verified.Group("/user")
 			{

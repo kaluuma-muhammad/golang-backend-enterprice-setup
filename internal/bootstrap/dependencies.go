@@ -15,9 +15,19 @@ import (
 	handlers "github.com/go-api/internal/interfaces/http/handlers"
 	"github.com/go-api/internal/interfaces/http/middleware"
 	"github.com/go-api/internal/shared/config"
+	"github.com/go-api/internal/shared/ratelimiter"
 )
 
 func registerAuthDependencies(container *Container, cfg *config.Config) {
+	config := ratelimiter.DefaultConfig()
+	store := ratelimiter.NewMemoryStore()
+
+	rateLimiter := ratelimiter.NewService(config, store)
+	rateLimiter.StartCleanup()
+
+	container.RateLimiter = rateLimiter
+	container.RateLimitMiddleware = middleware.NewRateLimitMiddleware(rateLimiter)
+
 	jwtManager := jwt.NewManager(cfg.JWT)
 	generator := token.NewGenerator()
 

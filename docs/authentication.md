@@ -2,9 +2,26 @@
 
 ## Overview
 
-The authentication module is responsible for user authentication, session management, JWT authentication, refresh token rotation, email verification, and account security.
+The authentication module handles:
 
-The design follows a layered architecture inspired by Domain-Driven Design (DDD) and Clean Architecture.
+* User authentication
+* Session management
+* JWT-based access control
+* Refresh token rotation
+* Email verification
+* Login tracking and auditing
+* Device-aware sessions
+
+The system follows **Clean Architecture (DDD-inspired)** with clear separation between:
+
+* Domain
+* Application
+* Infrastructure
+* Interfaces
+
+---
+
+## Architecture
 
 ```
 HTTP Request
@@ -13,23 +30,14 @@ HTTP Request
 HTTP Handler
       │
       ▼
-Application Service
+Application Service (Auth, Token, Security)
       │
       ▼
 Domain Interfaces
       │
       ▼
-Infrastructure Repositories
-      │
-      ▼
-PostgreSQL
+Infrastructure (Postgres, JWT, Email, Logger)
 ```
-
-The application layer contains business rules.
-
-The infrastructure layer contains implementations such as PostgreSQL, JWT generation, email delivery, and logging.
-
-The domain layer contains entities and repository contracts.
 
 ---
 
@@ -37,11 +45,9 @@ The domain layer contains entities and repository contracts.
 
 ## Users
 
-The `users` table stores permanent account information.
-
 ```
 users
-─────────────────────────────────────────────
+──────────────────────────────
 id
 email
 password
@@ -52,28 +58,22 @@ created_at
 updated_at
 ```
 
-### Purpose
+### Notes
 
-The users table represents the identity of a person using the system.
-
-Passwords are stored as bcrypt hashes.
-
-The `is_verified` flag determines whether the user has verified their email address.
-
-A user record never stores JWTs, refresh tokens, or verification codes.
+* Passwords are hashed using bcrypt
+* `is_verified` is used by authorization middleware
+* No tokens or sessions are stored here
 
 ---
 
 ## Sessions
 
-The `sessions` table stores login sessions.
-
 ```
 sessions
-─────────────────────────────────────────────
+──────────────────────────────
 id
 user_id
-refresh_token
+refresh_token (hashed)
 user_agent
 ip_address
 device_name
@@ -87,32 +87,23 @@ updated_at
 
 ### Purpose
 
-Every successful login creates a new session.
+Each login creates a session.
 
-Each browser, mobile device, or computer has its own session.
+Sessions enable:
 
-Sessions allow:
-
-* Multiple device login
-* Logout from one device
-* Logout from all devices
-* Refresh token rotation
-* Session revocation
-* Audit information
-
-Refresh tokens are never stored in plain text.
-
-Only SHA-256 hashes are stored.
+* Multi-device login
+* Token rotation
+* Logout per device
+* Logout all devices
+* Session-level security
 
 ---
 
-## Tokens
-
-The `tokens` table stores temporary single-use security tokens.
+## Tokens (Temporary)
 
 ```
 tokens
-─────────────────────────────────────────────
+──────────────────────────────
 id
 user_id
 type
@@ -122,21 +113,65 @@ used_at
 created_at
 ```
 
-### Supported Token Types
-
-Current:
+### Supported Types
 
 * email_verification
 
-Future:
+Future-ready for:
 
 * password_reset
 * email_change
-* invitation
 * magic_link
-* two_factor_recovery
 
-Unlike sessions, tokens are temporary and disposable.
+---
+
+## Login History (NEW)
+
+```
+login_histories
+──────────────────────────────
+id
+user_id
+ip_address
+user_agent
+status
+created_at
+```
+
+### Purpose
+
+Tracks every login attempt:
+
+* Success
+* Failure
+
+Used for:
+
+* Security monitoring
+* Fraud detection
+* Audit trail
+
+---
+
+## Audit Logs (NEW)
+
+```
+audit_logs
+──────────────────────────────
+id
+user_id
+action
+entity_type
+created_at
+```
+
+### Purpose
+
+Tracks important system actions:
+
+* USER_LOGIN
+* USER_LOGOUT
+* EMAIL_VERIFIED
 
 ---
 
@@ -145,103 +180,86 @@ Unlike sessions, tokens are temporary and disposable.
 ## Registration
 
 ```
-Client
-   │
 POST /auth/register
-   │
-   ▼
+```
+
+Flow:
+
+```
 Validate Request
-   │
-   ▼
+      │
 Check Email Exists
-   │
-   ▼
-Hash Password
-   │
-   ▼
+      │
+Hash Password (Security Service)
+      │
 Create User
-   │
-   ▼
-Generate Refresh Token
-   │
-   ▼
-Hash Refresh Token
-   │
-   ▼
+      │
 Create Session
-   │
-   ▼
-Generate Access Token
-   │
-   ▼
+      │
+Generate Access Token (JWT)
+      │
 Generate Verification Code
-   │
-   ▼
-Hash Verification Code
-   │
-   ▼
-Delete Previous Verification Token
-   │
-   ▼
-Store Verification Token
-   │
-   ▼
-Send Verification Email
-   │
-   ▼
-Return
+      │
+Store Token (hashed)
+      │
+Send Email
+      │
+Return Tokens
 ```
 
-Response:
-
-```
-{
-    "user": { ... },
-    "access_token": "...",
-    "refresh_token": "...",
-    "expires_in": 900
-}
-```
-
-The user is authenticated immediately after registration but is not yet verified.
+User is authenticated immediately but not verified.
 
 ---
 
-# Login
+## Login
 
 ```
 POST /auth/login
 ```
 
-Workflow
+Flow:
 
 ```
 Find User
       │
-Verify Password
+Verify Password (bcrypt)
       │
-Generate Refresh Token
-      │
-Hash Refresh Token
-      │
-Create Session
+Create Session (with device info)
       │
 Generate Access Token
+      │
+Store Login History
+      │
+Create Audit Log
       │
 Return Tokens
 ```
 
-Each login creates a completely new session.
+---
 
-Existing sessions remain active.
+## Device Awareness (NEW)
+
+Each session includes:
+
+* IP address
+* User agent
+* Device name
+
+Extracted using:
+
+```
+auth/device_info.go
+```
 
 ---
 
-# Refresh Token
+## Refresh Token Rotation
 
-Refresh tokens are rotated.
+```
+POST /auth/refresh
+```
 
-Workflow
+Flow:
 
 ```
 Receive Refresh Token
@@ -250,332 +268,259 @@ Hash Token
       │
 Find Session
       │
-Validate Session
+Validate:
+   - Not expired
+   - Not revoked
       │
 Generate New Refresh Token
-      │
-Hash New Token
       │
 Update Session
       │
 Generate New Access Token
       │
-Return Both Tokens
+Return Both
 ```
 
-Old refresh tokens immediately become invalid.
-
-This protects against replay attacks.
+Old refresh tokens become invalid immediately.
 
 ---
 
-# Logout
-
-Logout only affects the current session.
+## Logout
 
 ```
-Receive JWT
+POST /auth/logout
+```
+
+Flow:
+
+```
+Extract Session ID (from JWT)
       │
-Extract Session ID
+Revoke Session
       │
-Delete Session
+Create Audit Log
       │
 Return Success
 ```
 
-Deleting the session invalidates every refresh token belonging to that session.
-
-The access token naturally expires after fifteen minutes.
-
 ---
 
-# Logout All Devices
-
-Future endpoint:
+## Logout All Devices
 
 ```
 POST /auth/logout-all
 ```
 
-Workflow
+Flow:
 
 ```
-Delete All Sessions
+Delete All Sessions for User
       │
 Return Success
 ```
-
-Every refresh token belonging to the user immediately becomes invalid.
 
 ---
 
 # Email Verification
 
-After registration, a six-digit verification code is generated.
+## Generate Code
 
-Example
-
-```
-483921
-```
-
-Only the SHA-256 hash is stored.
-
-The plain code only exists in the email.
-
-Workflow
-
-```
-Generate Code
-      │
-Hash Code
-      │
-Delete Previous Verification Token
-      │
-Store Hash
-      │
-Send Email
-```
+* 6-digit numeric code
+* Stored as SHA-256 hash
+* Expires after 15 minutes
 
 ---
 
-# Verify Email
+## Verify Email
 
 ```
 POST /auth/verify-email
 ```
 
-Workflow
+Flow:
 
 ```
 Authenticated User
       │
-Receive Verification Code
+Receive Code
       │
 Hash Code
       │
-Find Verification Token
+Find Token
       │
-Validate Owner
-      │
-Check Used
-      │
-Check Expiration
+Validate:
+   - Not expired
+   - Not used
       │
 Mark User Verified
       │
 Mark Token Used
       │
+Create Audit Log
+      │
 Return Success
 ```
-
-No new JWT is issued.
-
-The user's verification status is loaded from the database on every authenticated request.
-
----
-
-# Resend Verification
-
-```
-POST /auth/resend-verification
-```
-
-Workflow
-
-```
-Delete Existing Verification Token
-      │
-Generate New Code
-      │
-Store Hash
-      │
-Send Email
-```
-
-Only one active verification code exists at any time.
 
 ---
 
 # JWT Authentication
 
-JWT access tokens contain only:
+JWT contains:
 
 ```
-User ID
-Session ID
-Issued At
-Expires At
+user_id
+session_id
+issued_at
+expires_at
 ```
 
-They intentionally do not contain:
+### Important Design Choice
 
-* email
+JWT does NOT contain:
+
 * role
 * permissions
+* email
 * is_verified
 
-This prevents stale authorization data inside tokens.
+This ensures:
+
+* No stale authorization data
+* Always validated against DB
 
 ---
 
 # Authentication Middleware
 
-Authentication middleware performs the following steps.
+Flow:
 
 ```
 Read Authorization Header
       │
-Validate Bearer Format
+Validate Bearer Token
       │
-Verify JWT
+Verify JWT Signature
       │
-Load User
+Extract Claims
       │
 Load Session
       │
-Store User In Context
+Validate Session
       │
-Store Session In Context
+Load User
+      │
+Store in Context
       │
 Continue
 ```
 
-Handlers never parse JWTs directly.
+---
 
-They retrieve the authenticated user from the request context.
+## Context Values (IMPORTANT)
+
+The middleware injects:
+
+```
+"user"    → full user object
+"session" → session object
+```
+
+Used by:
+
+* Handlers
+* Rate Limiter
+* Future RBAC system
 
 ---
 
 # Authorization Middleware
 
-Authentication and authorization are separated.
-
 ```
 RequireAuth()
 ```
 
-Ensures the request has a valid authenticated user.
+→ ensures authenticated user exists
 
 ```
 RequireVerified()
 ```
 
-Ensures the authenticated user has verified their email.
-
-Future middleware may include:
-
-* RequireRole()
-* RequirePermission()
-* RequireAdmin()
+→ ensures email is verified
 
 ---
 
-# Password Security
+# Security Layer
 
-Passwords are hashed using bcrypt.
-
-Plain passwords are never stored.
-
-Verification uses bcrypt comparison.
-
----
-
-# Refresh Token Security
-
-Refresh tokens are generated using cryptographically secure random bytes.
-
-Only SHA-256 hashes are stored in the database.
-
-A database leak cannot reveal usable refresh tokens.
-
----
-
-# Verification Code Security
-
-Verification codes are six-digit numeric values.
-
-Only their SHA-256 hashes are stored.
-
-Verification codes:
-
-* expire after fifteen minutes
-* are single use
-* belong to one user
-* are invalidated when regenerated
-
----
-
-# Session Security
-
-Every login creates a unique session.
-
-Each session has:
-
-* its own refresh token
-* expiration date
-* device information
-* IP address
-* user agent
-
-Compromising one refresh token does not affect other devices.
-
----
-
-# Email Infrastructure
-
-The email subsystem is infrastructure only.
+Located in:
 
 ```
-Application
-      │
-      ▼
-Email Service
-      │
-      ▼
-Provider
-      │
-      ▼
-SMTP
+internal/application/security/
 ```
 
-The email package knows how to send emails.
+Handles:
 
-The authentication module decides which templates to send.
-
-Current templates:
-
-* Email Verification
-
-Future templates:
-
-* Password Reset
-* Welcome Email
-* Invitation
-* Email Change Confirmation
+* Password hashing
+* Password validation
+* Input filtering
 
 ---
 
-# Future Enhancements
+# Token Service Layer
 
-The architecture has been designed to support additional authentication features without major structural changes.
+Located in:
 
-Planned additions include:
+```
+internal/application/token/
+```
 
-* Forgot Password
-* Password Reset
-* Email Change Verification
-* Multi-Factor Authentication (MFA)
-* OAuth Providers (Google, GitHub, Microsoft)
+Handles:
+
+* Access token generation
+* Refresh logic
+* Token validation
+
+---
+
+# Security Summary
+
+* Passwords hashed with bcrypt
+* Refresh tokens stored as SHA-256 hashes
+* JWTs short-lived (15 min)
+* Sessions tracked per device
+* Tokens are single-use (verification)
+* Login history tracked
+* Audit logs recorded
+
+---
+
+# Design Strengths
+
+* Clean separation of concerns
+* Device-aware authentication
+* Secure token handling
+* Audit-ready system
+* Extensible for RBAC and permissions
+* Ready for distributed scaling
+
+---
+
+# Future Improvements
+
 * Role-Based Access Control (RBAC)
-* Permission-Based Authorization
-* API Keys
-* Device Management
-* Session History
-* Login Notifications
-* Security Audit Logs
-* Rate Limiting
-* Account Lockout
-* Background Cleanup Workers for Expired Tokens and Sessions
+* Permission system
+* Two-factor authentication (2FA)
+* Session dashboard (active devices)
+* Suspicious login detection
 
-Because the authentication module separates domain logic, application services, infrastructure, and interfaces, these features can be added incrementally while preserving a clean, maintainable architecture.
+---
+
+# Summary
+
+The authentication module provides a **secure, scalable, and extensible foundation** for:
+
+* Identity management
+* Session control
+* API security
+* Event auditing
+
+It is tightly integrated with middleware and designed to support future authorization features.

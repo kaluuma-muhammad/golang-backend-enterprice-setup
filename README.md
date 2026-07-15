@@ -511,6 +511,7 @@ MAIL_FROM_NAME="Go API"
 * PostgreSQL Integration
 * SQLC Query Generation
 * Goose Database Migrations
+* Rate Limiting
 
 ---
 
@@ -521,7 +522,7 @@ MAIL_FROM_NAME="Go API"
 * Permission-Based Authorization
 * Background Workers
 * Redis Caching
-* Rate Limiting
+
 * Multi-Factor Authentication (MFA)
 * Kubernetes Deployment
 * OpenTelemetry Metrics & Tracing
