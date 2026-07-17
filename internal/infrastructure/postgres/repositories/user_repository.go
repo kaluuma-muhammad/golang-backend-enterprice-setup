@@ -24,22 +24,6 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 	}
 }
 
-func toDomain(u db.User) *user.User {
-
-	return &user.User{
-		ID:         u.ID,
-		Email:      u.Email,
-		Password:   u.Password,
-		FirstName:  u.FirstName,
-		LastName:   u.LastName,
-		Phone:      types.FromNullablePGText(u.Phone),
-		ImageURL:   types.FromNullablePGText(u.ImageUrl),
-		IsVerified: u.IsVerified,
-		CreatedAt:  types.FromPGTimestamp(u.CreatedAt),
-		UpdatedAt:  types.FromPGTimestamp(u.UpdatedAt),
-	}
-}
-
 func (r *UserRepository) Create(ctx context.Context, u *user.User) error {
 	q := common.GetQueries(ctx, r.pool)
 
@@ -67,7 +51,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*user.User
 		return nil, err
 	}
 
-	return toDomain(record), nil
+	return toUserDomain(record), nil
 }
 
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*user.User, error) {
@@ -79,7 +63,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*user.U
 		return nil, err
 	}
 
-	return toDomain(record), nil
+	return toUserDomain(record), nil
 }
 
 func (r *UserRepository) UpdateUserAccount(ctx context.Context, u *user.User) error {

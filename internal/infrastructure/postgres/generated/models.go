@@ -131,6 +131,30 @@ type LoginHistory struct {
 	UpdatedAt     pgtype.Timestamp
 }
 
+type Permission struct {
+	ID          uuid.UUID
+	Resource    string
+	Action      string
+	Name        string
+	Description pgtype.Text
+	CreatedAt   pgtype.Timestamp
+	UpdatedAt   pgtype.Timestamp
+}
+
+type Role struct {
+	ID          uuid.UUID
+	Name        string
+	Description pgtype.Text
+	IsSystem    bool
+	CreatedAt   pgtype.Timestamp
+	UpdatedAt   pgtype.Timestamp
+}
+
+type RolePermission struct {
+	RoleID       uuid.UUID
+	PermissionID uuid.UUID
+}
+
 type Session struct {
 	ID            uuid.UUID
 	UserID        uuid.UUID
@@ -174,4 +198,9 @@ type User struct {
 	LastLoginAt         pgtype.Timestamp
 	CreatedAt           pgtype.Timestamp
 	UpdatedAt           pgtype.Timestamp
+}
+
+type UserRole struct {
+	UserID uuid.UUID
+	RoleID uuid.UUID
 }

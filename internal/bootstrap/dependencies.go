@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/go-api/internal/application/auth"
+	"github.com/go-api/internal/application/authorization"
 	"github.com/go-api/internal/application/common"
 	"github.com/go-api/internal/application/security"
 	"github.com/go-api/internal/application/token"
@@ -13,6 +14,7 @@ import (
 	repositories "github.com/go-api/internal/infrastructure/postgres/repositories"
 	"github.com/go-api/internal/infrastructure/storage"
 	handlers "github.com/go-api/internal/interfaces/http/handlers"
+	authorizationHandlers "github.com/go-api/internal/interfaces/http/handlers/authorization"
 	"github.com/go-api/internal/interfaces/http/middleware"
 	"github.com/go-api/internal/shared/config"
 	"github.com/go-api/internal/shared/ratelimiter"
@@ -57,6 +59,9 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 	tokenRepository := repositories.NewTokenRepository(container.DB)
 	auditRepo := repositories.NewAuditRepository(container.DB)
 	loginHistoryRepo := repositories.NewLoginHistoryRepository(container.DB)
+	roleRepo := repositories.NewRoleRepository(container.DB)
+	permissionRepo := repositories.NewPermissionRepository(container.DB)
+	assignmentRepo := repositories.NewAssignmentRepository(container.DB)
 
 	// Application Services
 	emailService := email.New(cfg, provider, renderer)
@@ -99,11 +104,26 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 		cfg.App.BaseURL,
 	)
 
-	// HTTP Handlers
-	container.AuthHandler = handlers.NewAuthHandler(authService, container.Validator)
-	container.Authenticator = authenticator
-	container.AuthMiddleware = middleware.NewAuthMiddleware(authenticator)
-	container.SecurityService = securityService
-	container.UserHandler = handlers.NewUserHandler(userService, securityService, container.Validator)
+	authorizationService := authorization.NewService(
+		roleRepo,
+		permissionRepo,
+		assignmentRepo,
+		userRepo,
+	)
 
+	authorizationMiddleware := middleware.NewAuthorizationMiddleware(authorizationService)
+
+	container.Authenticator = authenticator
+	container.SecurityService = securityService
+	container.AuthorizationService = authorizationService
+	container.AuthorizationMiddleware = authorizationMiddleware
+
+	// HTTP Handlers
+	container.AuthMiddleware = middleware.NewAuthMiddleware(authenticator)
+	container.AuthHandler = handlers.NewAuthHandler(authService, container.Validator)
+	container.UserHandler = handlers.NewUserHandler(userService, securityService, container.Validator)
+	container.AuthorizationHandler = authorizationHandlers.NewAuthorizationHandler(
+		authorizationService,
+		container.Validator,
+	)
 }
