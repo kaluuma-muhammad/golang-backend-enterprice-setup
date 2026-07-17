@@ -23,26 +23,6 @@ func NewSessionRepository(pool *pgxpool.Pool) *SessionRepository {
 	}
 }
 
-func toSessionDomain(s db.Session) *session.Session {
-	return &session.Session{
-		ID:            s.ID,
-		UserID:        s.UserID,
-		RefreshToken:  s.RefreshToken,
-		UserAgent:     types.FromPGText(s.UserAgent),
-		IPAddress:     types.FromPGInet(s.IpAddress),
-		DeviceID:      types.FromPGText(s.DeviceID),
-		Platform:      types.FromPGText(s.Platform),
-		Browser:       types.FromPGText(s.Browser),
-		LastSeenAt:    types.FromPGTimestamp(s.LastSeenAt),
-		LastUsedAt:    types.FromPGTimestampPtr(s.LastUsedAt),
-		ExpiresAt:     types.FromPGTimestamp(s.ExpiresAt),
-		RevokedAt:     types.FromPGTimestampPtr(s.RevokedAt),
-		RevokedReason: types.FromNullablePGText(s.RevokedReason),
-		CreatedAt:     types.FromPGTimestamp(s.CreatedAt),
-		UpdatedAt:     types.FromPGTimestamp(s.UpdatedAt),
-	}
-}
-
 func (r *SessionRepository) Create(ctx context.Context, s *session.Session) error {
 	q := common.GetQueries(ctx, r.pool)
 

@@ -24,23 +24,6 @@ func NewLoginHistoryRepository(pool *pgxpool.Pool) *LoginHistoryRepository {
 	}
 }
 
-func toLoginHistoryDomain(h db.LoginHistory) *loginhistory.LoginHistory {
-	return &loginhistory.LoginHistory{
-		ID:            h.ID,
-		UserID:        types.FromNullableUUID(h.UserID),
-		SessionID:     types.FromNullableUUID(h.SessionID),
-		Status:        loginhistory.Status(h.Status),
-		IPAddress:     types.FromPGInet(h.IpAddress),
-		UserAgent:     types.FromPGText(h.UserAgent),
-		DeviceName:    types.FromPGText(h.DeviceName),
-		FailureReason: types.FromNullablePGText(h.FailureReason),
-		LoginAt:       types.FromPGTimestamp(h.LoginAt),
-		LogoutAt:      types.FromPGTimestampPtr(h.LogoutAt),
-		CreatedAt:     types.FromPGTimestamp(h.CreatedAt),
-		UpdatedAt:     types.FromPGTimestamp(h.UpdatedAt),
-	}
-}
-
 func (r *LoginHistoryRepository) Create(ctx context.Context, h *loginhistory.LoginHistory) error {
 	q := common.GetQueries(ctx, r.pool)
 

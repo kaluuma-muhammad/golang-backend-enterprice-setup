@@ -24,21 +24,6 @@ func NewAuditRepository(pool *pgxpool.Pool) *AuditRepository {
 	}
 }
 
-func toAuditLogDomain(log db.AuditLog) *audit.Log {
-	return &audit.Log{
-		ID:         log.ID,
-		UserID:     types.FromNullableUUID(log.UserID),
-		Action:     log.Action,
-		EntityType: types.FromNullablePGText(log.EntityType),
-		EntityID:   types.FromNullableUUID(log.EntityID),
-		IPAddress:  types.FromPGInet(log.IpAddress),
-		UserAgent:  types.FromPGText(log.UserAgent),
-		Metadata:   types.FromJSONB(log.Metadata),
-		CreatedAt:  types.FromPGTimestamp(log.CreatedAt),
-		UpdatedAt:  types.FromPGTimestamp(log.UpdatedAt),
-	}
-}
-
 func (r *AuditRepository) Create(ctx context.Context, log *audit.Log) error {
 	q := common.GetQueries(ctx, r.pool)
 

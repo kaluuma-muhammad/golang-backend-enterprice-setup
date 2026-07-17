@@ -21,19 +21,6 @@ func NewTokenRepository(pool *pgxpool.Pool) *TokenRepository {
 	}
 }
 
-func toTokenDomain(t db.Token) *domainToken.Token {
-	return &domainToken.Token{
-		ID:        t.ID,
-		UserID:    t.UserID,
-		Type:      domainToken.Type(t.Type),
-		Token:     t.Token,
-		ExpiresAt: types.FromPGTimestamp(t.ExpiresAt),
-		UsedAt:    types.FromPGTimestampPtr(t.UsedAt),
-		CreatedAt: types.FromPGTimestamp(t.CreatedAt),
-		UpdatedAt: types.FromPGTimestamp(t.UpdatedAt),
-	}
-}
-
 func (r *TokenRepository) Create(ctx context.Context, token *domainToken.Token) error {
 	q := common.GetQueries(ctx, r.pool)
 
