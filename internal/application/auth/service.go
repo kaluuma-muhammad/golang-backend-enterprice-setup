@@ -3,6 +3,7 @@ package auth
 import (
 	"strings"
 
+	appAuthorization "github.com/go-api/internal/application/authorization"
 	"github.com/go-api/internal/application/common"
 	"github.com/go-api/internal/application/security"
 	applicationToken "github.com/go-api/internal/application/token"
@@ -15,16 +16,17 @@ import (
 )
 
 type Service struct {
-	cfg          *config.JWTConfig
-	users        backendUser.Repository
-	sessions     backendSession.Repository
-	password     *security.PasswordService
-	tokenService *applicationToken.Service
-	emailService *email.Service
-	jwtManager   *jwt.Manager
-	security     *security.Service
-	tx           common.TransactionManager
-	baseURL      string
+	cfg                  *config.JWTConfig
+	users                backendUser.Repository
+	sessions             backendSession.Repository
+	password             *security.PasswordService
+	tokenService         *applicationToken.Service
+	emailService         *email.Service
+	authorizationService *appAuthorization.Service
+	jwtManager           *jwt.Manager
+	security             *security.Service
+	tx                   common.TransactionManager
+	baseURL              string
 }
 
 func NewService(
@@ -34,6 +36,7 @@ func NewService(
 	password *security.PasswordService,
 	tokenService *applicationToken.Service,
 	emailService *email.Service,
+	authorizationService *appAuthorization.Service,
 	jwtManager *jwt.Manager,
 	security *security.Service,
 	tx common.TransactionManager,
@@ -41,16 +44,17 @@ func NewService(
 ) *Service {
 
 	return &Service{
-		cfg:          &cfg.JWT,
-		users:        users,
-		sessions:     sessions,
-		password:     password,
-		tokenService: tokenService,
-		emailService: emailService,
-		jwtManager:   jwtManager,
-		security:     security,
-		tx:           tx,
-		baseURL:      baseURL,
+		cfg:                  &cfg.JWT,
+		users:                users,
+		sessions:             sessions,
+		password:             password,
+		tokenService:         tokenService,
+		emailService:         emailService,
+		authorizationService: authorizationService,
+		jwtManager:           jwtManager,
+		security:             security,
+		tx:                   tx,
+		baseURL:              baseURL,
 	}
 }
 

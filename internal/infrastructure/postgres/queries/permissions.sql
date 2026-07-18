@@ -1,5 +1,5 @@
 -- name: CreatePermission :one
-INSERT INTO permissions (resource, action, name, description, created_at, updated_at) VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING *;
+INSERT INTO permissions (id, resource, action, name, description, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING *;
 
 -- name: GetPermissionByID :one
 SELECT * FROM permissions WHERE id = $1;

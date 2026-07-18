@@ -1,5 +1,5 @@
 -- name: CreateRole :one
-INSERT INTO roles (name, description, is_system, created_at, updated_at) VALUES ($1, $2, $3, NOW(), NOW()) RETURNING *;
+INSERT INTO roles (id, name, description, is_system, created_at, updated_at) VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING *;
 
 -- name: GetRoleByID :one
 SELECT * FROM roles WHERE id = $1;

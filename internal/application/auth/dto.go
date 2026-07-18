@@ -40,11 +40,17 @@ type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token" validate:"required"`
 }
 
+type AuthorizationSummary struct {
+	Roles       []string `json:"roles"`
+	Permissions []string `json:"permissions"`
+}
+
 type LoginResponse struct {
-	User         *user.UserResponse `json:"user"`
-	AccessToken  string             `json:"access_token"`
-	RefreshToken string             `json:"refresh_token"`
-	ExpiresIn    int                `json:"expires_in"`
+	User          *user.UserResponse   `json:"user"`
+	Authorization AuthorizationSummary `json:"authorization"`
+	AccessToken   string               `json:"access_token"`
+	RefreshToken  string               `json:"refresh_token"`
+	ExpiresIn     int                  `json:"expires_in"`
 }
 
 type VerifyResetCodeResponse struct {
