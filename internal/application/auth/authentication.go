@@ -5,12 +5,41 @@ import (
 	"net"
 	"time"
 
+	appAuthorization "github.com/go-api/internal/application/authorization"
 	userResponse "github.com/go-api/internal/application/user"
+	"github.com/go-api/internal/domain/authorization"
 	backendSession "github.com/go-api/internal/domain/session"
 	domainToken "github.com/go-api/internal/domain/token"
 	backendUser "github.com/go-api/internal/domain/user"
 	"github.com/google/uuid"
 )
+
+func (s *Service) buildAuthorizationResponse(ctx context.Context, user *backendUser.User) (*AuthorizationSummary, error) {
+	response := &AuthorizationSummary{
+		Roles:       []string{},
+		Permissions: []string{},
+	}
+
+	roles, err := s.authorizationService.ListUserRoles(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	permissions, err := s.authorizationService.ListUserPermissions(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, role := range roles {
+		response.Roles = append(response.Roles, role.Name)
+	}
+
+	for _, permission := range permissions {
+		response.Permissions = append(response.Permissions, permission.Name)
+	}
+
+	return response, nil
+}
 
 func (s *Service) AuthenticateUser(ctx context.Context, user *backendUser.User, userAgent, ipAddress string) (*LoginResponse, error) {
 	deviceInfo := ParseDeviceInfo(userAgent, ipAddress)
@@ -69,11 +98,17 @@ func (s *Service) AuthenticateUser(ctx context.Context, user *backendUser.User, 
 		return nil, err
 	}
 
+	authorization, err := s.buildAuthorizationResponse(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
 	return &LoginResponse{
-		User:         userResponse.NewUserResponse(user, s.baseURL),
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken.Token,
-		ExpiresIn:    int(s.cfg.AccessTokenMinutes),
+		User:          userResponse.NewUserResponse(user, s.baseURL),
+		Authorization: *authorization,
+		AccessToken:   accessToken,
+		RefreshToken:  refreshToken.Token,
+		ExpiresIn:     int(s.cfg.AccessTokenMinutes),
 	}, nil
 }
 
@@ -107,6 +142,24 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest, userAgent, 
 		}
 
 		err = s.users.Create(txCtx, user)
+
+		if err != nil {
+			return err
+		}
+
+		role, err := s.authorizationService.GetRoleByName(txCtx, authorization.RoleAdmin)
+
+		if err != nil {
+			return err
+		}
+
+		err = s.authorizationService.AssignRoleToUser(
+			txCtx,
+			appAuthorization.AssignRoleRequest{
+				UserID: user.ID,
+				RoleID: role.ID,
+			},
+		)
 
 		if err != nil {
 			return err

@@ -27,6 +27,7 @@ func (r *RoleRepository) CreateRole(ctx context.Context, role *entities.Role) (*
 	record, err := q.CreateRole(
 		ctx,
 		db.CreateRoleParams{
+			ID:          role.ID,
 			Name:        role.Name,
 			Description: types.ToNullablePGText(role.Description),
 			IsSystem:    role.IsSystem,

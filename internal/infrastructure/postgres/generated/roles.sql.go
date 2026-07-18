@@ -24,17 +24,23 @@ func (q *Queries) CountRoles(ctx context.Context) (int64, error) {
 }
 
 const createRole = `-- name: CreateRole :one
-INSERT INTO roles (name, description, is_system, created_at, updated_at) VALUES ($1, $2, $3, NOW(), NOW()) RETURNING id, name, description, is_system, created_at, updated_at
+INSERT INTO roles (id, name, description, is_system, created_at, updated_at) VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING id, name, description, is_system, created_at, updated_at
 `
 
 type CreateRoleParams struct {
+	ID          uuid.UUID
 	Name        string
 	Description pgtype.Text
 	IsSystem    bool
 }
 
 func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error) {
-	row := q.db.QueryRow(ctx, createRole, arg.Name, arg.Description, arg.IsSystem)
+	row := q.db.QueryRow(ctx, createRole,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.IsSystem,
+	)
 	var i Role
 	err := row.Scan(
 		&i.ID,

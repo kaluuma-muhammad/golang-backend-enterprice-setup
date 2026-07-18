@@ -375,6 +375,14 @@ task run
 
 ---
 
+## Seed the Database
+
+```bash
+task seed
+```
+
+---
+
 ## Build
 
 ```bash
@@ -512,17 +520,16 @@ MAIL_FROM_NAME="Go API"
 * SQLC Query Generation
 * Goose Database Migrations
 * Rate Limiting
+* Role-Based Access Control (RBAC)
+* Permission-Based Authorization
 
 ---
 
 # Planned Features
 
 * OAuth (Google, GitHub, Microsoft)
-* Role-Based Access Control (RBAC)
-* Permission-Based Authorization
 * Background Workers
 * Redis Caching
-
 * Multi-Factor Authentication (MFA)
 * Kubernetes Deployment
 * OpenTelemetry Metrics & Tracing

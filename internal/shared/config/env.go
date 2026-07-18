@@ -49,6 +49,12 @@ func Load() (*Config, error) {
 			FromName:    os.Getenv("EMAIL_FROM_NAME"),
 			Encryption:  os.Getenv("EMAIL_ENCRYPTION"),
 		},
+		Admin: AdminConfig{
+			Email:     os.Getenv("SEED_ADMIN_EMAIL"),
+			Password:  os.Getenv("SEED_ADMIN_PASSWORD"),
+			FirstName: os.Getenv("SEED_ADMIN_FIRST_NAME"),
+			LastName:  os.Getenv("SEED_ADMIN_LAST_NAME"),
+		},
 	}
 
 	return cfg, nil

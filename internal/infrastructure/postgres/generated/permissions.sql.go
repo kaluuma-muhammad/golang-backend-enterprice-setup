@@ -24,10 +24,11 @@ func (q *Queries) CountPermissions(ctx context.Context) (int64, error) {
 }
 
 const createPermission = `-- name: CreatePermission :one
-INSERT INTO permissions (resource, action, name, description, created_at, updated_at) VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING id, resource, action, name, description, created_at, updated_at
+INSERT INTO permissions (id, resource, action, name, description, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING id, resource, action, name, description, created_at, updated_at
 `
 
 type CreatePermissionParams struct {
+	ID          uuid.UUID
 	Resource    string
 	Action      string
 	Name        string
@@ -36,6 +37,7 @@ type CreatePermissionParams struct {
 
 func (q *Queries) CreatePermission(ctx context.Context, arg CreatePermissionParams) (Permission, error) {
 	row := q.db.QueryRow(ctx, createPermission,
+		arg.ID,
 		arg.Resource,
 		arg.Action,
 		arg.Name,

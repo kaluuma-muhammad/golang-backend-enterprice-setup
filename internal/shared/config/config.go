@@ -5,6 +5,7 @@ type Config struct {
 	DB    DBConfig
 	JWT   JWTConfig
 	Email EmailConfig
+	Admin AdminConfig
 }
 
 type AppConfig struct {
@@ -40,4 +41,11 @@ type EmailConfig struct {
 	FromAddress string
 	FromName    string
 	Encryption  string
+}
+
+type AdminConfig struct {
+	Email     string
+	Password  string
+	FirstName string
+	LastName  string
 }

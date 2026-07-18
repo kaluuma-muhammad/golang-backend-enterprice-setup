@@ -81,6 +81,13 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 		loginHistoryRepo,
 	)
 
+	authorizationService := authorization.NewService(
+		roleRepo,
+		permissionRepo,
+		assignmentRepo,
+		userRepo,
+	)
+
 	authService := auth.NewService(
 		cfg,
 		userRepo,
@@ -88,6 +95,7 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 		passwordService,
 		tokenService,
 		emailService,
+		authorizationService,
 		jwtManager,
 		securityService,
 		tx,
@@ -104,19 +112,18 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 		cfg.App.BaseURL,
 	)
 
-	authorizationService := authorization.NewService(
-		roleRepo,
-		permissionRepo,
-		assignmentRepo,
-		userRepo,
-	)
-
 	authorizationMiddleware := middleware.NewAuthorizationMiddleware(authorizationService)
 
 	container.Authenticator = authenticator
 	container.SecurityService = securityService
 	container.AuthorizationService = authorizationService
 	container.AuthorizationMiddleware = authorizationMiddleware
+
+	container.PasswordService = passwordService
+	container.UserRepository = userRepo
+	container.RoleRepository = roleRepo
+	container.PermissionRepository = permissionRepo
+	container.AssignmentRepository = assignmentRepo
 
 	// HTTP Handlers
 	container.AuthMiddleware = middleware.NewAuthMiddleware(authenticator)

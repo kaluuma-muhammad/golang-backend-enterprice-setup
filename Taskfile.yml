@@ -13,6 +13,10 @@ tasks:
     cmds:
       - go run ./cmd/api
 
+  seed:
+    cmds:
+      - go run ./cmd/seed
+
   build:
     cmds:
       - go build ./...

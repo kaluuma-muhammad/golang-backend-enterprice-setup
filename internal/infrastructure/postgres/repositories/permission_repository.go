@@ -27,6 +27,7 @@ func (r *PermissionRepository) CreatePermission(ctx context.Context, permission 
 	record, err := q.CreatePermission(
 		ctx,
 		db.CreatePermissionParams{
+			ID:          permission.ID,
 			Resource:    permission.Resource,
 			Action:      permission.Action,
 			Name:        permission.Name,
