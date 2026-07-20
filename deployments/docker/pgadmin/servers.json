@@ -1,0 +1,13 @@
+{
+    "Servers": {
+        "1": {
+            "Name": "Go API Database",
+            "Group": "Servers",
+            "Host": "postgres",
+            "Port": 5432,
+            "MaintenanceDB": "go_api_db",
+            "Username": "postgres",
+            "SSLMode": "prefer"
+        }
+    }
+}

@@ -1,0 +1,12 @@
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.dev
+
+    entrypoint: []
+
+    command: air -c .air.toml
+
+    volumes:
+      - ../..:/app
