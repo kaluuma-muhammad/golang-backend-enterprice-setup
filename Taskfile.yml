@@ -7,6 +7,10 @@ vars:
   DB_URL: postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@{{.DB_HOST}}:{{.DB_PORT}}/{{.DB_NAME}}?sslmode={{.DB_SSLMODE}}
   MIGRATION_DIR: internal/infrastructure/postgres/migrations
 
+  DOCKER_BASE: -f deployments/docker/docker-compose.yml
+  DOCKER_DEV: -f deployments/docker/docker-compose.dev.yml
+  DOCKER_PROD: -f deployments/docker/docker-compose.prod.yml
+
 tasks:
 
   run:
@@ -61,3 +65,43 @@ tasks:
   vet:
     cmds:
       - go vet ./...
+
+  docker:dev:
+    desc: Start the Docker development environment
+    cmds:
+      - docker compose {{.DOCKER_BASE}} {{.DOCKER_DEV}} up
+
+  docker:dev:build:
+    desc: Build and start the Docker development environment
+    cmds:
+      - docker compose {{.DOCKER_BASE}} {{.DOCKER_DEV}} up --build
+
+  docker:prod:
+    desc: Start the Docker production environment
+    cmds:
+      - docker compose {{.DOCKER_BASE}} {{.DOCKER_PROD}} up
+
+  docker:prod:build:
+    desc: Build and start the Docker production environment
+    cmds:
+      - docker compose {{.DOCKER_BASE}} {{.DOCKER_PROD}} up --build
+
+  docker:down:
+    desc: Stop all Docker containers
+    cmds:
+      - docker compose {{.DOCKER_BASE}} down
+
+  docker:logs:
+    desc: View Docker logs
+    cmds:
+      - docker compose {{.DOCKER_BASE}} logs -f
+
+  docker:clean:
+    desc: Stop containers and remove volumes
+    cmds:
+      - docker compose {{.DOCKER_BASE}} down -v
+
+  docker:ps:
+    desc: Show running Docker containers
+    cmds:
+      - docker compose {{.DOCKER_BASE}} ps

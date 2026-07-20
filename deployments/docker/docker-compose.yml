@@ -1,0 +1,82 @@
+name: go-api
+
+services:
+
+  postgres:
+    image: postgres:17-alpine
+
+    restart: unless-stopped
+
+    env_file:
+      - ../../.env
+
+    environment:
+      POSTGRES_DB: go_api_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: go-api:latest
+
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile
+
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    env_file:
+      - ../../.env
+
+    ports:
+      - "8080:8080"
+
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: go_api_db
+      DB_SSLMODE: disable
+
+  pgadmin:
+    image: dpage/pgadmin4:9
+
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+
+    ports:
+      - "5050:80"
+
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json
+
+volumes:
+  postgres_data:
+    name: go-api_postgres_data
+
+  pgadmin_data:
+    name: go-api_pgadmin_data

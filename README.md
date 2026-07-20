@@ -6,6 +6,76 @@ The project is designed to serve as a reusable foundation for enterprise APIs wi
 
 ---
 
+# Quick Start
+
+## Prerequisites
+
+- Go 1.26+
+- PostgreSQL 17+
+- Docker & Docker Compose (recommended)
+- Task
+
+Clone the repository:
+
+```bash
+git clone <repository-url>
+cd go-api
+```
+
+Create your environment file:
+
+```bash
+cp .env.example .env
+```
+
+### Run with Docker (Recommended)
+
+Development:
+
+```bash
+task docker:dev
+```
+
+Production:
+
+```bash
+task docker:prod
+```
+
+### Run Locally
+
+Install dependencies:
+
+```bash
+task tidy
+```
+
+Run database migrations:
+
+```bash
+task migrate:up
+```
+
+Seed the database:
+
+```bash
+task seed
+```
+
+Start the API:
+
+```bash
+task run
+```
+
+For detailed Docker documentation, see:
+
+```text
+docs/docker.md
+```
+
+---
+
 # Technology Stack
 
 ## Language
@@ -274,11 +344,16 @@ The project follows a layered architecture.
 
 ```text
 cmd/
-│
+
+deployments/
+├── docker/
+└── kubernetes/
+
+docs/
+
 internal/
-│
-├── domain/
 ├── application/
+├── domain/
 ├── infrastructure/
 ├── interfaces/
 └── shared/
@@ -359,39 +434,39 @@ Examples:
 
 # Development Workflow
 
-## Install Dependencies
+The project supports two development workflows.
+
+## Local Development
+
+### Install Dependencies
 
 ```bash
 go mod tidy
 ```
-
 ---
 
-## Run the API
+### Run the API
 
 ```bash
 task run
 ```
-
 ---
 
-## Seed the Database
+### Seed the Database
 
 ```bash
 task seed
 ```
-
 ---
 
-## Build
+### Build
 
 ```bash
 task build
 ```
-
 ---
 
-## Run Tests
+### Run Tests
 
 ```bash
 task test
@@ -399,7 +474,7 @@ task test
 
 ---
 
-## Format Code
+### Format Code
 
 ```bash
 task fmt
@@ -407,7 +482,7 @@ task fmt
 
 ---
 
-## Run Static Analysis
+### Run Static Analysis
 
 ```bash
 task vet
@@ -415,7 +490,7 @@ task vet
 
 ---
 
-## Generate SQL Code
+### Generate SQL Code
 
 Whenever SQL queries change:
 
@@ -424,6 +499,84 @@ task sqlc
 ```
 
 ---
+
+
+## Docker Development Environment
+
+### Start the Docker development environment
+
+```bash
+task docker:dev
+```
+---
+
+
+### Build and start the Docker development environment
+
+```bash
+task docker:dev:build
+```
+---
+
+## Start Production Environment
+
+### Start the Docker production environment
+
+```bash
+task docker:prod
+```
+---
+
+### Build and start the Docker production environment
+
+```bash
+task docker:prod:build
+```
+---
+
+### Stop all Docker containers
+
+```bash
+task docker:down
+```
+---
+
+### View Docker logs
+
+```bash
+task docker:logs
+```
+---
+
+### Rebuild and restart the development environment
+
+```bash
+task docker:dev:restart
+```
+---
+
+### Rebuild and restart the production environment
+
+```bash
+task docker:prod:restart
+```
+---
+
+### Stop containers and remove volumes
+
+```bash
+task docker:clean
+```
+---
+
+### Show running Docker containers
+
+```bash
+task docker:ps
+```
+
+---
+
 
 ## Migration Workflow
 
@@ -522,17 +675,38 @@ MAIL_FROM_NAME="Go API"
 * Rate Limiting
 * Role-Based Access Control (RBAC)
 * Permission-Based Authorization
+* Docker Development Environment
+* Multi-stage Docker Builds
+* Docker Compose
+* Air Hot Reload
+* pgAdmin Integration
+* Automatic Database Migrations
+* Automatic Database Seeding
 
 ---
 
 # Planned Features
 
+* Redis Caching Module
 * OAuth (Google, GitHub, Microsoft)
 * Background Workers
-* Redis Caching
-* Multi-Factor Authentication (MFA)
+* MinIO Object Storage
+* Mailpit Development Mail Server
 * Kubernetes Deployment
 * OpenTelemetry Metrics & Tracing
+* CI/CD Pipelines
+
+---
+
+# Documentation
+
+Project documentation is available under the `docs/` directory.
+
+- `docs/architecture.md`
+- `docs/api.md`
+- `docs/authentication.md`
+- `docs/database.md`
+- `docs/docker.md`
 
 ---
 
