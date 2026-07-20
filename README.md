@@ -18,7 +18,7 @@ The project is designed to serve as a reusable foundation for enterprise APIs wi
 Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/kaluuma-muhammad/golang-backend-enterprice-setup.git
 cd go-api
 ```
 
