@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-api/internal/bootstrap"
 	"github.com/go-api/internal/interfaces/http/routes"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -13,6 +14,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	defer func() {
+		if err := app.Close(); err != nil {
+			app.Logger.Error("failed to shutdown application", zap.Error(err))
+		}
+	}()
 
 	router := routes.SetupRouter(app.Logger, app.Container)
 	router.Static("/storage", "./storage")

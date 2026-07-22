@@ -74,9 +74,24 @@ services:
       - pgadmin_data:/var/lib/pgadmin
       - ./pgadmin/servers.json:/pgadmin4/servers.json
 
+  redis:
+    image: redis:8-alpine
+    container_name: go-api-redis
+
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+
+    volumes:
+      - redis_data:/data
+
 volumes:
   postgres_data:
-    name: go-api_postgres_data
-
   pgadmin_data:
-    name: go-api_pgadmin_data
+  redis_data:
