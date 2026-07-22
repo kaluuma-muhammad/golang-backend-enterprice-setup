@@ -16,6 +16,7 @@ func Load() (*Config, error) {
 	passwordResetMinutes, _ := strconv.Atoi(os.Getenv("PASSWORD_RESET_MINUTES"))
 	magicLinkMinutes, _ := strconv.Atoi(os.Getenv("MAGIC_LINK_MINUTES"))
 	emailPort, _ := strconv.Atoi(os.Getenv("EMAIL_PORT"))
+	redisDB, _ := strconv.Atoi(os.Getenv("REDIS_DB"))
 
 	cfg := &Config{
 		App: AppConfig{
@@ -54,6 +55,15 @@ func Load() (*Config, error) {
 			Password:  os.Getenv("SEED_ADMIN_PASSWORD"),
 			FirstName: os.Getenv("SEED_ADMIN_FIRST_NAME"),
 			LastName:  os.Getenv("SEED_ADMIN_LAST_NAME"),
+		},
+		Redis: RedisConfig{
+			Host:     os.Getenv("REDIS_HOST"),
+			Port:     os.Getenv("REDIS_PORT"),
+			Password: os.Getenv("REDIS_PASSWORD"),
+			DB:       redisDB,
+		},
+		RateLimiter: RateLimitConfig{
+			Store: os.Getenv("RATE_LIMIT_STORE"),
 		},
 	}
 

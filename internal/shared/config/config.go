@@ -1,11 +1,13 @@
 package config
 
 type Config struct {
-	App   AppConfig
-	DB    DBConfig
-	JWT   JWTConfig
-	Email EmailConfig
-	Admin AdminConfig
+	App         AppConfig
+	DB          DBConfig
+	JWT         JWTConfig
+	Email       EmailConfig
+	Admin       AdminConfig
+	Redis       RedisConfig
+	RateLimiter RateLimitConfig
 }
 
 type AppConfig struct {
@@ -48,4 +50,15 @@ type AdminConfig struct {
 	Password  string
 	FirstName string
 	LastName  string
+}
+
+type RedisConfig struct {
+	Host     string
+	Port     string
+	Password string
+	DB       int
+}
+
+type RateLimitConfig struct {
+	Store string
 }

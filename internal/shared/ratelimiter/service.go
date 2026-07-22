@@ -23,6 +23,8 @@ func NewService(config *Config, store Store) *Service {
 	}
 }
 
+var _ RateLimiter = (*Service)(nil)
+
 func (s *Service) Allow(c *gin.Context, isAuthenticated bool, userID string, group string) (bool, time.Duration, Limit) {
 	// 1. Determine applicable limit
 	limit := s.resolveLimit(c, group)

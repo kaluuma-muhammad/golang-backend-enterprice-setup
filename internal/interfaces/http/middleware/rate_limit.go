@@ -10,11 +10,11 @@ import (
 )
 
 type RateLimitMiddleware struct {
-	limiter *ratelimiter.Service
+	limiter ratelimiter.RateLimiter
 }
 
 // create a new middleware
-func NewRateLimitMiddleware(limiter *ratelimiter.Service) *RateLimitMiddleware {
+func NewRateLimitMiddleware(limiter ratelimiter.RateLimiter) *RateLimitMiddleware {
 	return &RateLimitMiddleware{
 		limiter: limiter,
 	}

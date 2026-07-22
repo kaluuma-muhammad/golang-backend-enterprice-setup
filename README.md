@@ -133,6 +133,50 @@ Advantages:
 
 ---
 
+## Caching & Distributed Infrastructure
+
+* **Redis**
+
+Redis is integrated as the application's distributed cache and infrastructure layer.
+
+Current uses:
+
+* Distributed rate limiting
+* Cache abstraction
+
+The architecture supports switching between in-memory and Redis-backed implementations without changing application code.
+
+Future modules will reuse the same Redis infrastructure for:
+
+* Permission caching (RBAC)
+* User profile caching
+* JWT blacklist
+* Password reset tokens
+* Email verification tokens
+* API response caching
+* Background jobs
+* Distributed locking
+
+---
+
+The application also supports environment-based infrastructure selection.
+
+For example, the rate limiter can be configured to use either an in-memory implementation or Redis without requiring code changes.
+
+```env
+RATE_LIMIT_STORE=memory
+```
+
+or
+
+```env
+RATE_LIMIT_STORE=redis
+```
+
+This makes local development lightweight while enabling distributed rate limiting in production.
+
+---
+
 ## SQL Query Generation
 
 * **sqlc**
@@ -426,6 +470,8 @@ Examples:
 
 * Configuration
 * Validation
+* Cache Abstractions
+* Rate Limiting
 * Constants
 * Utilities
 * Shared Errors
@@ -617,25 +663,25 @@ task migrate:reset
 Example:
 
 ```env
-APP_NAME=Backend Platform
+APP_NAME=Go API
 APP_PORT=8080
 APP_BASE_URL=http://localhost:8080
 
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=password
-DB_NAME=backend_platform
+DB_HOST=
+DB_PORT=
+DB_USER=
+DB_PASSWORD=
+DB_NAME=
 DB_SSLMODE=disable
 
-JWT_SECRET=
-JWT_ISSUER=
-JWT_ACCESS_TOKEN_MINUTES=
-JWT_REFRESH_TOKEN_DAYS=
+JWT_SECRET=super-secret-key
+JWT_ISSUER=backend-platform
+JWT_ACCESS_TOKEN_MINUTES=10080
+JWT_REFRESH_TOKEN_DAYS=30
 
-EMAIL_VERIFICATION_MINUTES=
-PASSWORD_RESET_MINUTES=
-MAGIC_LINK_MINUTES=
+EMAIL_VERIFICATION_MINUTES=15
+PASSWORD_RESET_MINUTES=15
+MAGIC_LINK_MINUTES=10
 
 MAIL_MAILER=smtp
 MAIL_HOST=
@@ -645,6 +691,19 @@ MAIL_PASSWORD=
 MAIL_ENCRYPTION=ssl
 MAIL_FROM_ADDRESS=
 MAIL_FROM_NAME="Go API"
+
+SEED_ADMIN_EMAIL=admin@example.com
+SEED_ADMIN_PASSWORD=Admin@12345
+SEED_ADMIN_FIRST_NAME=System
+SEED_ADMIN_LAST_NAME=Administrator
+
+RATE_LIMIT_STORE=memory  # local developement
+# RATE_LIMIT_STORE=redis  # deploying with Docker
+
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
 ```
 
 ---
@@ -682,12 +741,12 @@ MAIL_FROM_NAME="Go API"
 * pgAdmin Integration
 * Automatic Database Migrations
 * Automatic Database Seeding
+* Redis Caching Module
 
 ---
 
 # Planned Features
 
-* Redis Caching Module
 * OAuth (Google, GitHub, Microsoft)
 * Background Workers
 * MinIO Object Storage

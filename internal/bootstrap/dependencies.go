@@ -1,7 +1,7 @@
 package bootstrap
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/go-api/internal/application/auth"
 	"github.com/go-api/internal/application/authorization"
@@ -12,6 +12,7 @@ import (
 	"github.com/go-api/internal/infrastructure/email"
 	"github.com/go-api/internal/infrastructure/jwt"
 	repositories "github.com/go-api/internal/infrastructure/postgres/repositories"
+	redisinfra "github.com/go-api/internal/infrastructure/redis"
 	"github.com/go-api/internal/infrastructure/storage"
 	handlers "github.com/go-api/internal/interfaces/http/handlers"
 	authorizationHandlers "github.com/go-api/internal/interfaces/http/handlers/authorization"
@@ -20,12 +21,31 @@ import (
 	"github.com/go-api/internal/shared/ratelimiter"
 )
 
-func registerAuthDependencies(container *Container, cfg *config.Config) {
+func registerAuthDependencies(container *Container, cfg *config.Config) error {
 	config := ratelimiter.DefaultConfig()
-	store := ratelimiter.NewMemoryStore()
 
-	rateLimiter := ratelimiter.NewService(config, store)
-	rateLimiter.StartCleanup()
+	var rateLimiter ratelimiter.RateLimiter
+
+	switch cfg.RateLimiter.Store {
+	case "memory":
+		store := ratelimiter.NewMemoryStore()
+		memory := ratelimiter.NewService(config, store)
+		memory.StartCleanup()
+		rateLimiter = memory
+
+	case "redis":
+		redisClient, err := redisinfra.New(cfg.Redis)
+		if err != nil {
+			return fmt.Errorf("initialize redis: %w", err)
+		}
+
+		container.Redis = redisClient
+		container.Cache = redisClient
+		rateLimiter = ratelimiter.NewRedisService(config, container.Cache)
+
+	default:
+		return fmt.Errorf("unknown rate limiter store: %s", cfg.RateLimiter.Store)
+	}
 
 	container.RateLimiter = rateLimiter
 	container.RateLimitMiddleware = middleware.NewRateLimitMiddleware(rateLimiter)
@@ -35,7 +55,7 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 
 	renderer, err := email.NewRenderer()
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("initialize email renderer: %w", err)
 	}
 
 	provider, err := email.NewSMTP(
@@ -48,7 +68,7 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 		cfg.Email.Encryption,
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("initialize email provider: %w", err)
 	}
 
 	tx := common.NewTransactionManager(container.DB)
@@ -133,4 +153,5 @@ func registerAuthDependencies(container *Container, cfg *config.Config) {
 		authorizationService,
 		container.Validator,
 	)
+	return nil
 }

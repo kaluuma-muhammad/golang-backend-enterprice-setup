@@ -2,261 +2,468 @@
 
 ## Overview
 
-The rate limiting system protects the API from abuse, brute-force attacks, and excessive traffic. It is implemented at the **API Gateway level** and applies limits based on:
+The rate limiting system protects the API from abuse, brute-force attacks, denial-of-service attempts, and excessive traffic. It is implemented as middleware at the API gateway, ensuring requests are validated before reaching the application layer.
 
-* IP address (unauthenticated users)
-* User ID (authenticated users)
-* Route and request type
+The implementation supports multiple storage backends:
+
+- **Memory** – Ideal for local development and single-instance deployments.
+- **Redis** – Distributed rate limiting for Docker and production environments.
+
+The storage backend is configurable without requiring code changes.
 
 ---
 
-## Architecture
+# Architecture
 
 ```
-Client
-   ↓
-API Gateway
-   ├── Authentication
-   ├── Rate Limiting  ← (THIS)
-   ├── Logging
-   └── Forward to Services
+                       Client
+                          │
+                          ▼
+                 Gin HTTP Middleware
+                          │
+                          ▼
+               RateLimitMiddleware
+                          │
+                          ▼
+               RateLimiter Interface
+                 ┌────────┴────────┐
+                 │                 │
+                 ▼                 ▼
+          Memory Service      Redis Service
+                 │                 │
+                 ▼                 ▼
+          Memory Store         Redis Cache
 ```
 
-All downstream services are protected because requests are filtered at the gateway.
+The middleware depends only on the `RateLimiter` interface, allowing different implementations to be swapped through dependency injection.
 
 ---
 
-## Key Features
+# Features
 
-### 1. Token Bucket Algorithm
+The rate limiting system provides:
 
-The system uses Go's `rate.Limiter`:
-
-* Smooth request handling
-* Allows short bursts
-* Enforces long-term limits
+- Token Bucket rate limiting
+- Route-specific limits
+- Group-based limits
+- User/IP identification
+- Pluggable storage backends
+- Automatic cleanup (memory backend)
+- Distributed support (Redis backend)
+- Configurable without recompilation
 
 ---
 
-### 2. Multi-Level Limiting
+# Token Bucket Algorithm
 
-#### Route-Based Limits (Highest Priority)
+The memory implementation uses Go's `golang.org/x/time/rate` package.
+
+Benefits include:
+
+- Smooth request processing
+- Burst support
+- Constant-time checks
+- Efficient memory usage
+
+---
+
+# Limiting Strategy
+
+Rate limits are resolved in the following order.
+
+```
+Route Limit
+      │
+      ▼
+Group Limit
+      │
+      ▼
+Default Limit
+```
+
+The first matching rule is applied.
+
+---
+
+# Route-Based Limits
+
+Routes that require additional protection can have dedicated limits.
 
 Example:
 
 ```
-POST /auth/login → 5 requests/min/IP
-POST /auth/register → 3 requests/min/IP
+POST /api/v1/auth/login
+→ 5 requests/minute
+```
+
+```
+POST /api/v1/auth/register
+→ 3 requests/minute
+```
+
+These limits are typically used for authentication endpoints that are vulnerable to brute-force attacks.
+
+---
+
+# Group-Based Limits
+
+Application routes are divided into logical groups.
+
+| Group | Description |
+|---------|------------|
+| Public | Unauthenticated users |
+| Protected | Authenticated users |
+| Verified | Verified users |
+
+Each group has its own configurable request limits.
+
+---
+
+# Default Limits
+
+If no route-specific or group-specific configuration exists, the default limit is applied.
+
+This guarantees every endpoint is protected.
+
+---
+
+# Identity Strategy
+
+## Unauthenticated Users
+
+Requests are tracked using the client's IP address.
+
+```
+METHOD:PATH:ip:CLIENT_IP
+```
+
+Example
+
+```
+POST:/api/v1/auth/login:ip:192.168.1.20
 ```
 
 ---
 
-#### Group-Based Limits
+## Authenticated Users
 
-| Group     | Description           |
-| --------- | --------------------- |
-| Public    | Unauthenticated users |
-| Protected | Authenticated users   |
-| Verified  | Verified users        |
+Authenticated requests use the user identifier.
+
+```
+METHOD:PATH:user:USER_ID
+```
+
+Example
+
+```
+GET:/api/v1/orders:user:997c0ac0
+```
+
+Using the user ID prevents multiple authenticated users behind the same network from affecting one another.
 
 ---
 
-#### Default Limit
+# Components
 
-Fallback when no specific rule exists.
+## Config
 
----
+Defines:
 
-## Identity Strategy
-
-### Unauthenticated Users
-
-```
-Key = METHOD:PATH:ip:CLIENT_IP
-```
-
-Example:
-
-```
-POST:/auth/login:ip:192.168.1.1
-```
+- Route limits
+- Group limits
+- Default limits
+- Cleanup intervals
+- Maximum idle time
 
 ---
 
-### Authenticated Users
-
-```
-Key = METHOD:PATH:user:USER_ID
-```
-
-Example:
-
-```
-GET:/orders:user:abc-123
-```
-
-This avoids penalizing multiple users sharing the same IP.
-
----
-
-## Components
-
-### 1. Config
-
-Defines limits:
-
-* Requests per window
-* Burst size
-* Route-specific rules
-* Group limits
-
----
-
-### 2. Key Generator
+## Key Generator
 
 Responsible for:
 
-* Building unique keys per request
-* Handling proxy headers (`X-Forwarded-For`)
+- Generating consistent request keys
+- Using User IDs for authenticated requests
+- Falling back to IP addresses
+- Supporting reverse proxy headers
+
+Supported headers include:
+
+- X-Forwarded-For
+- X-Real-IP
 
 ---
 
-### 3. Store Interface
+## RateLimiter Interface
 
-Abstract storage layer:
+The middleware depends on a common interface instead of a concrete implementation.
 
-* Current: In-memory store
-* Future: Redis (distributed support)
-
----
-
-### 4. Memory Store
-
-* Thread-safe (`sync.RWMutex`)
-* O(1) lookups
-* Stores limiter instances per key
+This allows switching between memory and Redis without modifying the middleware.
 
 ---
 
-### 5. Limiter Wrapper
+## Memory Service
 
-Wraps `rate.Limiter`:
+The in-memory implementation uses:
 
-* Handles token bucket logic
-* Calculates retry delay
-* Provides limit metadata
+- Token Bucket algorithm
+- `sync.RWMutex`
+- In-memory map
+- Background cleanup worker
 
----
+Recommended for:
 
-### 6. Service Layer
-
-Core logic:
-
-* Resolves correct limit (route → group → default)
-* Creates or retrieves limiter
-* Tracks last usage
-* Decides allow/deny
+- Local development
+- Single server deployments
+- Testing
 
 ---
 
-### 7. Cleanup Worker
+## Memory Store
 
-* Runs periodically
-* Removes inactive limiters
-* Prevents memory leaks
+Stores limiter instances keyed by request identity.
 
----
+Characteristics:
 
-### 8. Middleware
-
-Integrated into Gin:
-
-* Extracts user identity
-* Applies rate limiting
-* Returns `429 Too Many Requests` when exceeded
+- Thread-safe
+- Constant-time lookup
+- Automatic limiter creation
+- Periodic cleanup
 
 ---
 
-## Request Flow
+## Redis Service
+
+The Redis implementation stores counters inside Redis instead of application memory.
+
+Characteristics:
+
+- Shared across multiple application instances
+- Supports horizontal scaling
+- No in-memory cleanup required
+- Uses Redis key expiration
+
+Recommended for:
+
+- Docker deployments
+- Kubernetes
+- Production environments
+- Load-balanced APIs
+
+---
+
+## Cache Abstraction
+
+The Redis implementation depends on the application's cache abstraction rather than the Redis client directly.
+
+```
+RedisService
+       │
+       ▼
+common.Cache
+       │
+       ▼
+Redis Client
+```
+
+This keeps the application independent of a specific cache implementation.
+
+---
+
+## Cleanup Worker
+
+Only the memory implementation requires cleanup.
+
+The worker:
+
+- Runs periodically
+- Removes inactive limiters
+- Prevents memory leaks
+
+Redis does not require cleanup because key expiration is handled automatically.
+
+---
+
+# Request Flow
 
 ```
 Incoming Request
-      ↓
-Identify User (IP or user_id)
-      ↓
-Generate Key
-      ↓
-Resolve Limit (route/group/default)
-      ↓
-Check Limiter
-      ↓
-Allowed? ── Yes → Continue
-         └─ No  → 429 Response
+        │
+        ▼
+Authentication
+        │
+        ▼
+Determine Identity
+(IP or User ID)
+        │
+        ▼
+Generate Request Key
+        │
+        ▼
+Resolve Applicable Limit
+(Route → Group → Default)
+        │
+        ▼
+RateLimiter Interface
+        │
+        ├───────────────┐
+        ▼               ▼
+Memory Service    Redis Service
+        │               │
+        ▼               ▼
+Decision (Allow/Deny)
+        │
+        ▼
+Continue or Return 429
 ```
 
 ---
 
-## Response Example
+# Response Headers
 
-### Allowed
-
-```
-200 OK
-X-RateLimit-Limit: 100
-```
-
----
-
-### Blocked
+Successful requests include:
 
 ```
-429 Too Many Requests
-Retry-After: 10
+X-RateLimit-Limit
+```
+
+When the request exceeds the configured limit:
+
+```
+Retry-After
+```
+
+is returned.
+
+Example:
+
+```
+HTTP/1.1 429 Too Many Requests
+
+Retry-After: 12
 
 {
-  "error": "rate_limit_exceeded",
-  "message": "Too many requests. Please try again later.",
-  "retry_after": 10
+    "error": "rate_limit_exceeded",
+    "message": "Too many requests. Please try again later.",
+    "retry_after": 12
 }
 ```
 
 ---
 
-## Cleanup Strategy
+# Configuration
 
-* Each limiter tracks last usage
-* Inactive limiters are removed after a defined time
-* Prevents unbounded memory growth
+The implementation supports multiple backends.
+
+Example:
+
+```env
+RATE_LIMIT_STORE=memory
+```
+
+or
+
+```env
+RATE_LIMIT_STORE=redis
+```
+
+Redis configuration:
+
+```env
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+```
+
+For Docker:
+
+```env
+RATE_LIMIT_STORE=redis
+REDIS_HOST=redis
+```
+
+No code changes are required when switching implementations.
 
 ---
 
-## Design Benefits
+# Local Development
 
-* High performance (in-memory)
-* Scalable (can switch to Redis)
-* Flexible (per-route + per-user limits)
-* Secure (prevents brute-force attacks)
-* Clean architecture (separated components)
+Recommended configuration:
 
----
+```
+RATE_LIMIT_STORE=memory
+```
 
-## Future Improvements
+Advantages:
 
-* Redis-based distributed rate limiting
-* Per-role limits (Admin, Customer, Rider)
-* API key-based limits
-* Global system throttling
-* Rate limit dashboards & metrics
+- No Redis dependency
+- Faster startup
+- Easier debugging
 
 ---
 
-## Summary
+# Production
 
-The rate limiting system provides:
+Recommended configuration:
 
-* Protection against abuse
-* Fine-grained traffic control
-* Seamless integration with authentication
-* Scalable design for future growth
+```
+RATE_LIMIT_STORE=redis
+```
 
-It is a critical component for maintaining API stability and security.
+Advantages:
+
+- Distributed rate limiting
+- Shared counters
+- Horizontal scalability
+- Consistent limits across multiple API instances
+
+---
+
+# Design Principles
+
+The implementation follows several design principles.
+
+- Dependency Injection
+- Interface-based design
+- Separation of concerns
+- Single Responsibility Principle
+- Configurable infrastructure
+- Pluggable storage backend
+
+---
+
+# Future Enhancements
+
+With Redis integrated, additional features can reuse the same infrastructure:
+
+- Permission caching (RBAC)
+- User profile caching
+- JWT blacklist
+- Refresh token storage
+- Email verification cache
+- Password reset cache
+- API response caching
+- Distributed locking
+- Background jobs
+- Pub/Sub messaging
+- Metrics and dashboards
+
+---
+
+# Summary
+
+The rate limiting system provides a flexible, enterprise-ready solution for protecting the API.
+
+Key characteristics include:
+
+- Multi-level rate limiting
+- Token Bucket algorithm
+- Memory and Redis implementations
+- Interface-driven architecture
+- Dependency injection
+- Horizontal scalability
+- Environment-based configuration
+- Automatic cleanup for memory storage
+- Distributed support through Redis
+
+This design allows the application to start with a lightweight in-memory implementation during development while seamlessly switching to Redis for distributed production deployments without requiring changes to the application code.
