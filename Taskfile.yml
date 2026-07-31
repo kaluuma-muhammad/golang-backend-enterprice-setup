@@ -9,7 +9,6 @@ vars:
 
   DOCKER_BASE: -f deployments/docker/docker-compose.yml
   DOCKER_DEV: -f deployments/docker/docker-compose.dev.yml
-  DOCKER_PROD: -f deployments/docker/docker-compose.prod.yml
 
 tasks:
 
@@ -79,12 +78,12 @@ tasks:
   docker:prod:
     desc: Start the Docker production environment
     cmds:
-      - docker compose {{.DOCKER_BASE}} {{.DOCKER_PROD}} up
+      - docker compose {{.DOCKER_BASE}} {{.DOCKER_BASE}} up
 
   docker:prod:build:
     desc: Build and start the Docker production environment
     cmds:
-      - docker compose {{.DOCKER_BASE}} {{.DOCKER_PROD}} up --build
+      - docker compose {{.DOCKER_BASE}} {{.DOCKER_BASE}} up --build
 
   docker:down:
     desc: Stop all Docker containers

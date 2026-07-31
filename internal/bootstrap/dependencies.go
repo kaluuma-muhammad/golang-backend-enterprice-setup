@@ -12,7 +12,6 @@ import (
 	"github.com/go-api/internal/infrastructure/email"
 	"github.com/go-api/internal/infrastructure/jwt"
 	repositories "github.com/go-api/internal/infrastructure/postgres/repositories"
-	redisinfra "github.com/go-api/internal/infrastructure/redis"
 	"github.com/go-api/internal/infrastructure/storage"
 	handlers "github.com/go-api/internal/interfaces/http/handlers"
 	authorizationHandlers "github.com/go-api/internal/interfaces/http/handlers/authorization"
@@ -26,26 +25,24 @@ func registerAuthDependencies(container *Container, cfg *config.Config) error {
 
 	var rateLimiter ratelimiter.RateLimiter
 
-	switch cfg.RateLimiter.Store {
-	case "memory":
-		store := ratelimiter.NewMemoryStore()
-		memory := ratelimiter.NewService(config, store)
-		memory.StartCleanup()
-		rateLimiter = memory
+	// TODO: Add Memory support for rate limiting
+	// when deploying locally
+	store := ratelimiter.NewMemoryStore()
+	memory := ratelimiter.NewService(config, store)
+	memory.StartCleanup()
+	rateLimiter = memory
 
-	case "redis":
-		redisClient, err := redisinfra.New(cfg.Redis)
-		if err != nil {
-			return fmt.Errorf("initialize redis: %w", err)
-		}
+	// TODO: Add Redis support for rate limiting
+	// when deploying with Docker
 
-		container.Redis = redisClient
-		container.Cache = redisClient
-		rateLimiter = ratelimiter.NewRedisService(config, container.Cache)
+	// redisClient, err := redisinfra.New(cfg.Redis)
+	// if err != nil {
+	// 	return fmt.Errorf("initialize redis: %w", err)
+	// }
 
-	default:
-		return fmt.Errorf("unknown rate limiter store: %s", cfg.RateLimiter.Store)
-	}
+	// container.Redis = redisClient
+	// container.Cache = redisClient
+	// rateLimiter = ratelimiter.NewRedisService(config, container.Cache)
 
 	container.RateLimiter = rateLimiter
 	container.RateLimitMiddleware = middleware.NewRateLimitMiddleware(rateLimiter)

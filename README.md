@@ -697,9 +697,6 @@ SEED_ADMIN_PASSWORD=Admin@12345
 SEED_ADMIN_FIRST_NAME=System
 SEED_ADMIN_LAST_NAME=Administrator
 
-RATE_LIMIT_STORE=memory  # local developement
-# RATE_LIMIT_STORE=redis  # deploying with Docker
-
 REDIS_HOST=redis
 REDIS_PORT=6379
 REDIS_PASSWORD=
